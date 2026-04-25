@@ -1,8 +1,8 @@
 export const disturbanceIntensityColors: [number, string][] = [
-    [0, "#22c55e"],   // Green
-    [45, "#eab308"],  // Yellow
-    [75, "#f97316"],  // Orange
-    [100, "#ef4444"], // Red
+    [0, "#22c55e"],   // Healthy (Green)
+    [45, "#eab308"],  // Moderate (Yellow)
+    [75, "#f97316"],  // Severe (Orange)
+    [100, "#ef4444"], // Critical (Red)
 ];
 
 export function interpolateColor(c1: string, c2: string, t: number) {
@@ -12,22 +12,17 @@ export function interpolateColor(c1: string, c2: string, t: number) {
 }
 
 export function getDisturbanceColor(percentage: number) {
-    percentage = Math.max(0, Math.min(100, percentage));
-    for (let i = 0; i < disturbanceIntensityColors.length - 1; i++) {
-        if (percentage >= disturbanceIntensityColors[i][0] && percentage <= disturbanceIntensityColors[i+1][0]) {
-            const range = disturbanceIntensityColors[i+1][0] - disturbanceIntensityColors[i][0];
-            const t = (percentage - disturbanceIntensityColors[i][0]) / range;
-            return interpolateColor(disturbanceIntensityColors[i][1], disturbanceIntensityColors[i+1][1], t);
-        }
-    }
-    return disturbanceIntensityColors[disturbanceIntensityColors.length-1][1];
+    if (percentage === 0) return "#22c55e";
+    if (percentage <= 45) return "#eab308";
+    if (percentage <= 75) return "#f97316";
+    return "#ef4444";
 }
 
 export function getDisturbanceLabel(percentage: number): string {
     if (percentage === 0) return "0% – Healthy";
-    if (percentage <= 45) return `${percentage}% – Moderate`;
-    if (percentage <= 75) return `${percentage}% – Severe`;
-    return `${percentage}% – Critical`;
+    if (percentage <= 45) return "45% – Moderate";
+    if (percentage <= 75) return "75% – Severe";
+    return "100% – Critical";
 }
 
 export function colorToHex(color: string): string {

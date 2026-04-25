@@ -1,19 +1,52 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { regions, getDisturbanceColor, disturbanceColors, disturbanceDescriptions, getDisturbanceLabel } from "@/lib/waterData";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function MyWaterPage() {
-  // Flatten all water sources across all regions into a single list
-  const allWaterSources = Object.values(regions).flatMap((region) => region.waterSources);
-  // Optional: deduplicate by label to avoid showing identical items if they are repeated
-  const uniqueWaterSources = Array.from(new Map(allWaterSources.map((ws) => [ws.label, ws])).values());
+  const { user } = useAuth();
+  const [userRegionName, setUserRegionName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetch(`/api/account?accountId=${user.id}`)
+        .then(res => res.json())
+        .then(data => {
+           if (data?.account?.region) {
+             setUserRegionName(data.account.region);
+           }
+        })
+        .catch(console.error);
+    }
+  }, [user]);
+
+  let targetSources = Object.values(regions).flatMap(r => r.waterSources);
+  if (userRegionName) {
+    const matchedRegion = Object.entries(regions).find(([key]) => 
+       key.toLowerCase() === userRegionName.toLowerCase() || 
+       key.toLowerCase().includes(userRegionName.toLowerCase()) ||
+       userRegionName.toLowerCase().includes(key.toLowerCase())
+    );
+    if (matchedRegion) {
+       targetSources = matchedRegion[1].waterSources;
+    }
+  }
+
+  const uniqueWaterSources = Array.from(new Map(targetSources.map((ws) => [ws.label, ws])).values());
 
   return (
     <ProtectedRoute>
       <section className="min-h-[calc(100vh-4rem)] w-full bg-slate-50 dark:bg-slate-900 p-6 sm:p-8 transition-colors">
         <div className="mx-auto max-w-6xl">
           <header className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-100">Water Status Dashboard</h1>
-          <p className="mt-2 text-slate-500 dark:text-slate-400">Real-time disturbance reports for all monitored water viewing points.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
+            {userRegionName ? `${userRegionName} Water Status` : "Water Status Dashboard"}
+          </h1>
+          <p className="mt-2 text-slate-500 dark:text-slate-400">
+            Real-time disturbance reports for your monitored water viewing points.
+          </p>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
