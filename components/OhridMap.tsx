@@ -271,7 +271,7 @@ function SearchPage({ onSearch }: { onSearch: (region: Region, name: string) => 
 
     return (
         <div style={{
-            width: "100vw", height: "100vh", display: "flex", flexDirection: "column",
+            width: "100%", height: "100%", display: "flex", flexDirection: "column",
             alignItems: "center", justifyContent: "center", background: "#f0f4f8",
         }}>
             <div style={{
@@ -317,7 +317,7 @@ function MapPage({ region, regionName, onBack }: { region: Region; regionName: s
     const waterSources = region.waterSources;
 
     return (
-        <div style={{ position: "relative", width: "100vw", height: "100vh" }}>
+        <div style={{ position: "relative", width: "100%", height: "100%" }}>
             <Map ref={mapRef} center={region.center} zoom={region.zoom}>
                 {waterSources.map((source) => (
                     <GeoCircle key={`circle-${source.id}`} source={source} />
