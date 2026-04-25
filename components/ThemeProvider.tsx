@@ -6,41 +6,41 @@ import { Moon, Sun } from "lucide-react";
 type Theme = "light" | "dark";
 
 type ThemeContextType = {
-  theme: Theme | null;
+  theme: Theme;
   toggleTheme: () => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+// ── PROVIDER ─────────────────────────────────────
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme | null>(null);
+  const [theme, setTheme] = useState<Theme>("dark");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Initial check
-    const stored = localStorage.getItem("app_theme") as Theme;
-    if (stored) {
-      setTheme(stored);
-    } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setTheme("dark");
-    } else {
-      setTheme("light");
-    }
+    // ✅ ALWAYS start light
+    setTheme("dark");
+    localStorage.removeItem("app_theme");
+    setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (!theme) return;
-    
+    if (!mounted) return;
+
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
     }
+
     localStorage.setItem("app_theme", theme);
-  }, [theme]);
+  }, [theme, mounted]);
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   };
+
+  if (!mounted) return null;
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
@@ -49,17 +49,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// ── HOOK ─────────────────────────────────────────
 export function useTheme() {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
   return ctx;
 }
 
+// ── TOGGLE BUTTON ───────────────────────────────
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
-
-  // Prevent hydration mismatch
-  if (!theme) return null;
 
   return (
     <button

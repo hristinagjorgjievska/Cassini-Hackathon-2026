@@ -1,49 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getRegions, getDisturbanceColor, disturbanceColors, disturbanceDescriptions, getDisturbanceLabel, addCustomWaterSource, WaterSource } from "@/lib/waterData";
+import Link from "next/link";
+import { getRegions, getDisturbanceColor, disturbanceColors, disturbanceDescriptions, getDisturbanceLabel, addCustomWaterSource, updateCustomWaterSource, deleteCustomWaterSource, WaterSource } from "@/lib/waterData";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function MyWaterPage() {
-  const { user } = useAuth();
-  const [userRegionName, setUserRegionName] = useState<string | null>(null);
-
   const [waterSources, setWaterSources] = useState<WaterSource[]>([]);
-  const [showAddForm, setShowAddForm] = useState(false);
   
   // Form State
   const [label, setLabel] = useState("");
   const [longitude, setLongitude] = useState("");
   const [latitude, setLatitude] = useState("");
-  const [disturbance, setDisturbance] = useState("0");
-
-  useEffect(() => {
-    if (user?.id) {
-      fetch(`/api/account?accountId=${user.id}`)
-        .then(res => res.json())
-        .then(data => {
-           if (data?.account?.region) {
-             setUserRegionName(data.account.region);
-           }
-        })
-        .catch(console.error);
-    }
-  }, [user]);
+  const [selectedDisturbances, setSelectedDisturbances] = useState<string[]>([]);
+  const [editingSourceId, setEditingSourceId] = useState<number | null>(null);
 
   const loadData = () => {
     const currentRegions = getRegions();
-    let targetSources = Object.values(currentRegions).flatMap(r => r.waterSources);
+    let targetSources: WaterSource[] = [];
 
-    if (userRegionName) {
-      const matchedRegion = Object.entries(currentRegions).find(([key]) => 
-         key.toLowerCase() === userRegionName.toLowerCase() || 
-         key.toLowerCase().includes(userRegionName.toLowerCase()) ||
-         userRegionName.toLowerCase().includes(key.toLowerCase())
-      );
-      if (matchedRegion) {
-         targetSources = matchedRegion[1].waterSources;
-      }
+    if (currentRegions["custom"]) {
+       targetSources = currentRegions["custom"].waterSources;
     }
 
     const uniqueWaterSources = Array.from(new Map(targetSources.map((ws) => [ws.label + (ws.id || ""), ws])).values());
@@ -52,30 +30,56 @@ export default function MyWaterPage() {
 
   useEffect(() => {
     loadData();
-  }, [userRegionName]);
+  }, []);
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleUpdateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const lng = parseFloat(longitude);
     const lat = parseFloat(latitude);
-    const dist = parseInt(disturbance);
     
     if (isNaN(lng) || isNaN(lat)) {
       alert("Invalid coordinates");
       return;
     }
     
-    addCustomWaterSource(label, lng, lat, isNaN(dist) ? 0 : dist);
+    if (editingSourceId) {
+      updateCustomWaterSource(editingSourceId, label, lng, lat, selectedDisturbances);
+    }
     
     // Reset form
     setLabel("");
     setLongitude("");
     setLatitude("");
-    setDisturbance("0");
-    setShowAddForm(false);
+    setSelectedDisturbances([]);
+    setEditingSourceId(null);
     
     // Refresh data
     loadData();
+  };
+
+  const handleEdit = (source: WaterSource) => {
+    setLabel(source.label);
+    setLongitude(source.longitude.toString());
+    setLatitude(source.latitude.toString());
+    setSelectedDisturbances(source.disturbances.map(d => d.type));
+    setEditingSourceId(source.id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleDelete = (id: number) => {
+    if (window.confirm("Are you sure you want to delete this tracked point?")) {
+      deleteCustomWaterSource(id);
+      loadData();
+    }
+  };
+
+  const handleCheckbox = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (e.target.checked) {
+      setSelectedDisturbances(prev => [...prev, val]);
+    } else {
+      setSelectedDisturbances(prev => prev.filter(d => d !== val));
+    }
   };
 
   return (
@@ -85,24 +89,28 @@ export default function MyWaterPage() {
           <header className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
-                {userRegionName ? `${userRegionName} Water Status` : "Water Status Dashboard"}
+                Water Status Dashboard
               </h1>
               <p className="mt-2 text-slate-500 dark:text-slate-400">
-                Real-time disturbance reports for {userRegionName ? "your" : "all"} monitored water viewing points.
+                Real-time disturbance reports for your manually tracked water sources.
               </p>
             </div>
-            <button 
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="rounded-md bg-[#0277bd] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#01579b]"
-            >
-              {showAddForm ? "Cancel" : "+ Add Tracked Point"}
-            </button>
           </header>
 
-          {showAddForm && (
+          {editingSourceId !== null && (
             <div className="mb-8 rounded-2xl bg-white dark:bg-slate-800 p-6 shadow-sm ring-1 ring-slate-200 dark:ring-white/10 transition-colors">
-              <h2 className="mb-4 text-lg font-semibold text-slate-800 dark:text-slate-100">Add New Water Source</h2>
-              <form onSubmit={handleAddSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+                  Edit Water Source
+                </h2>
+                <button 
+                  onClick={() => setEditingSourceId(null)}
+                  className="text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                >
+                  Cancel
+                </button>
+              </div>
+              <form onSubmit={handleUpdateSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                 <div className="lg:col-span-2">
                   <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Name / Label</label>
                   <input required type="text" value={label} onChange={e => setLabel(e.target.value)} placeholder="e.g. My Custom Point" className="w-full rounded-md border-0 py-2 px-3 text-slate-900 dark:text-slate-100 dark:bg-slate-700 ring-1 ring-inset ring-slate-300 dark:ring-slate-600 focus:ring-2 focus:ring-[#0277bd] outline-none transition-colors text-sm" />
@@ -115,14 +123,24 @@ export default function MyWaterPage() {
                   <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Latitude</label>
                   <input required type="number" step="any" value={latitude} onChange={e => setLatitude(e.target.value)} placeholder="42.002" className="w-full rounded-md border-0 py-2 px-3 text-slate-900 dark:text-slate-100 dark:bg-slate-700 ring-1 ring-inset ring-slate-300 dark:ring-slate-600 focus:ring-2 focus:ring-[#0277bd] outline-none transition-colors text-sm" />
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Disturbance %</label>
-                  <div className="flex gap-2">
-                    <input required type="number" min="0" max="100" value={disturbance} onChange={e => setDisturbance(e.target.value)} className="w-full rounded-md border-0 py-2 px-3 text-slate-900 dark:text-slate-100 dark:bg-slate-700 ring-1 ring-inset ring-slate-300 dark:ring-slate-600 focus:ring-2 focus:ring-[#0277bd] outline-none transition-colors text-sm" />
-                    <button type="submit" className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500">
-                      Save
-                    </button>
+                <div className="lg:col-span-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-2 border-t border-slate-100 dark:border-slate-700 pt-4">
+                  <div className="flex gap-4 flex-wrap">
+                    <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                      <input type="checkbox" value="algae" checked={selectedDisturbances.includes("algae")} onChange={handleCheckbox} className="rounded border-slate-300 text-[#0277bd] focus:ring-[#0277bd]" /> Algae
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                      <input type="checkbox" value="pollution" checked={selectedDisturbances.includes("pollution")} onChange={handleCheckbox} className="rounded border-slate-300 text-[#0277bd] focus:ring-[#0277bd]" /> Pollution
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                      <input type="checkbox" value="turbidity" checked={selectedDisturbances.includes("turbidity")} onChange={handleCheckbox} className="rounded border-slate-300 text-[#0277bd] focus:ring-[#0277bd]" /> Turbidity
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                      <input type="checkbox" value="temperature" checked={selectedDisturbances.includes("temperature")} onChange={handleCheckbox} className="rounded border-slate-300 text-[#0277bd] focus:ring-[#0277bd]" /> Temperature
+                    </label>
                   </div>
+                  <button type="submit" className="shrink-0 rounded-md bg-emerald-600 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500">
+                    Update Point
+                  </button>
                 </div>
               </form>
             </div>
@@ -130,7 +148,7 @@ export default function MyWaterPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {waterSources.map((source) => {
-              const badgeColor = getDisturbanceColor(source.disturbancePercentage);
+              const badgeColor = getDisturbanceColor(source);
               return (
                 <div
                   key={source.id + source.label}
@@ -142,7 +160,7 @@ export default function MyWaterPage() {
                       className="flex items-center justify-center rounded-full px-3 py-1 text-sm font-bold text-white shadow-sm"
                       style={{ backgroundColor: badgeColor }}
                     >
-                      {getDisturbanceLabel(source.disturbancePercentage)}
+                      {getDisturbanceLabel(source)}
                     </div>
                   </div>
 
@@ -171,6 +189,30 @@ export default function MyWaterPage() {
                       Water source is clear of disturbances.
                     </div>
                   )}
+                  
+                  {/* Action Buttons */}
+                  <div className="mt-5 flex flex-col gap-2 border-t border-slate-100 dark:border-slate-700/50 pt-4">
+                    <Link 
+                        href={`/water-source/${source.id}`}
+                        className="flex-1 rounded-md bg-[#0277bd] px-3 py-2 text-xs font-bold text-white text-center transition-colors hover:bg-[#01579b] shadow-sm"
+                    >
+                        View Detailed Analysis →
+                    </Link>
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={() => handleEdit(source)}
+                        className="flex-1 rounded-md bg-slate-100 dark:bg-slate-700 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-200 dark:hover:bg-slate-600"
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(source.id)}
+                        className="flex-1 rounded-md bg-red-50 dark:bg-red-900/20 px-3 py-2 text-xs font-semibold text-red-600 dark:text-red-400 transition-colors hover:bg-red-100 dark:hover:bg-red-900/40"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
                 </div>
               );
             })}

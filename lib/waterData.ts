@@ -6,30 +6,47 @@ export const disturbanceIntensityColors: [number, string][] = [
 ];
 
 export function interpolateColor(c1: string, c2: string, t: number) {
-    const r1 = parseInt(c1.slice(1,3),16), g1 = parseInt(c1.slice(3,5),16), b1 = parseInt(c1.slice(5,7),16);
-    const r2 = parseInt(c2.slice(1,3),16), g2 = parseInt(c2.slice(3,5),16), b2 = parseInt(c2.slice(5,7),16);
-    return `rgb(${Math.round(r1+(r2-r1)*t)},${Math.round(g1+(g2-g1)*t)},${Math.round(b1+(b2-b1)*t)})`;
+    const r1 = parseInt(c1.slice(1, 3), 16), g1 = parseInt(c1.slice(3, 5), 16), b1 = parseInt(c1.slice(5, 7), 16);
+    const r2 = parseInt(c2.slice(1, 3), 16), g2 = parseInt(c2.slice(3, 5), 16), b2 = parseInt(c2.slice(5, 7), 16);
+    return `rgb(${Math.round(r1 + (r2 - r1) * t)},${Math.round(g1 + (g2 - g1) * t)},${Math.round(b1 + (b2 - b1) * t)})`;
 }
 
-export function getDisturbanceColor(percentage: number) {
-    if (percentage === 0) return "#22c55e";
-    if (percentage <= 45) return "#eab308";
-    if (percentage <= 75) return "#f97316";
+export function getDisturbanceLevel(source: WaterSource): number {
+    if (source.disturbances && source.disturbances.length > 0) {
+        const count = source.disturbances.length;
+        if (count >= 4) return 100;
+        if (count === 3) return 75;
+        if (count >= 1) return 45;
+        return 0;
+    }
+    const p = Number(source.disturbancePercentage) || 0;
+    if (p >= 100) return 100;
+    if (p >= 75) return 75;
+    if (p >= 45) return 45;
+    return 0;
+}
+
+export function getDisturbanceColor(source: WaterSource) {
+    const level = getDisturbanceLevel(source);
+    if (level === 0) return "#22c55e";
+    if (level === 45) return "#eab308";
+    if (level === 75) return "#f97316";
     return "#ef4444";
 }
 
-export function getDisturbanceLabel(percentage: number): string {
-    if (percentage === 0) return "0% – Healthy";
-    if (percentage <= 45) return "45% – Moderate";
-    if (percentage <= 75) return "75% – Severe";
-    return "100% – Critical";
+export function getDisturbanceLabel(source: WaterSource): string {
+    const level = getDisturbanceLevel(source);
+    if (level === 0) return "0% - Healthy";
+    if (level === 45) return "45% - Mediocre";
+    if (level === 75) return "75% - Harmfull";
+    return "100% - Critical";
 }
 
 export function colorToHex(color: string): string {
     if (color.startsWith("#")) return color;
     const m = color.match(/rgb\((\d+),(\d+),(\d+)\)/);
     if (!m) return "#ffffff";
-    return "#" + [m[1],m[2],m[3]].map(v => parseInt(v).toString(16).padStart(2,"0")).join("");
+    return "#" + [m[1], m[2], m[3]].map(v => parseInt(v).toString(16).padStart(2, "0")).join("");
 }
 
 export const disturbanceColors: Record<string, string> = {
@@ -52,7 +69,7 @@ export const disturbanceDescriptions: Record<string, string> = {
 };
 
 export type Disturbance = { id: number; type: string; };
-export type WaterSource  = { id: number; longitude: number; latitude: number; disturbancePercentage: number; label: string; disturbances: Disturbance[]; };
+export type WaterSource = { id: number; longitude: number; latitude: number; disturbancePercentage: number; label: string; disturbances: Disturbance[]; };
 export type Region = { center: [number, number]; zoom: number; waterSources: WaterSource[]; };
 
 export const defaultRegions: Record<string, Region> = {
@@ -117,6 +134,8 @@ export const defaultRegions: Record<string, Region> = {
                 disturbances: [
                     { id: 1, type: "pollution" },
                     { id: 2, type: "turbidity" },
+                    { id: 3, type: "algae" },
+                    { id: 4, type: "temperature" },
                 ],
             },
             {
@@ -154,18 +173,18 @@ export const regions: Record<string, Region> = defaultRegions; // Kept for backw
 
 export function getRegions(): Record<string, Region> {
     if (typeof window === "undefined") return defaultRegions;
-    
+
     const stored = localStorage.getItem("custom_water_sources");
     if (!stored) return defaultRegions;
-    
+
     try {
         const customSources: WaterSource[] = JSON.parse(stored);
         if (customSources.length === 0) return defaultRegions;
-        
+
         // Calculate center based on the first custom source, or default to center of MK
         const centerLng = customSources[0].longitude;
         const centerLat = customSources[0].latitude;
-        
+
         return {
             ...defaultRegions,
             "custom": {
@@ -179,21 +198,80 @@ export function getRegions(): Record<string, Region> {
     }
 }
 
-export function addCustomWaterSource(label: string, longitude: number, latitude: number, disturbancePercentage: number) {
+export function addCustomWaterSource(label: string, longitude: number, latitude: number, selectedDisturbances: string[]) {
     if (typeof window === "undefined") return;
-    
+
     const stored = localStorage.getItem("custom_water_sources");
     const customSources: WaterSource[] = stored ? JSON.parse(stored) : [];
-    
+
     const newSource: WaterSource = {
         id: Date.now(), // Generate unique ID
         longitude,
         latitude,
-        disturbancePercentage,
+        disturbancePercentage: 0,
         label,
-        disturbances: [] // Custom sources start without specific disturbances for now, or we could add them
+        disturbances: selectedDisturbances.map((type, i) => ({ id: Date.now() + i, type }))
     };
-    
+
     customSources.push(newSource);
     localStorage.setItem("custom_water_sources", JSON.stringify(customSources));
+}
+
+export function updateCustomWaterSource(id: number, label: string, longitude: number, latitude: number, selectedDisturbances: string[]) {
+    if (typeof window === "undefined") return;
+
+    const stored = localStorage.getItem("custom_water_sources");
+    const customSources: WaterSource[] = stored ? JSON.parse(stored) : [];
+    
+    const index = customSources.findIndex(s => s.id === id);
+    if (index !== -1) {
+        customSources[index] = {
+            ...customSources[index],
+            label,
+            longitude,
+            latitude,
+            disturbances: selectedDisturbances.map((type, i) => ({ id: Date.now() + i, type }))
+        };
+        localStorage.setItem("custom_water_sources", JSON.stringify(customSources));
+    }
+}
+
+export function deleteCustomWaterSource(id: number) {
+    if (typeof window === "undefined") return;
+
+    const stored = localStorage.getItem("custom_water_sources");
+    if (!stored) return;
+    
+    const customSources: WaterSource[] = JSON.parse(stored);
+    const filtered = customSources.filter(s => s.id !== id);
+    
+    localStorage.setItem("custom_water_sources", JSON.stringify(filtered));
+}
+
+export function getWaterSourceById(id: number): WaterSource | null {
+    const currentRegions = getRegions();
+    const allSources = Object.values(currentRegions).flatMap(r => r.waterSources);
+    return allSources.find(s => s.id === id) || null;
+}
+
+export function getMockHistoricalData(id: number) {
+    const data = [];
+    const now = new Date();
+    for (let i = 14; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        data.push({
+            date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            score: Math.floor(20 + Math.random() * 60)
+        });
+    }
+    return data;
+}
+
+export function getMockForecast(id: number) {
+    return [
+        { day: "Tomorrow", status: "Healthy", score: 15, color: "#22c55e" },
+        { day: "In 2 Days", status: "Mediocre", score: 45, color: "#eab308" },
+        { day: "In 3 Days", status: "Harmfull", score: 75, color: "#f97316" }
+    ];
 }

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Map, MapMarker, MarkerContent, useMap, type MapRef } from "@/components/ui/map";
+import { Map, MapMarker, MarkerContent, MarkerPopup, useMap, type MapRef } from "@/components/ui/map";
+import { Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 import {
     getDisturbanceColor,
@@ -13,18 +16,19 @@ import {
     type Region,
     type WaterSource,
     getDisturbanceLabel,
-    getRegions
+    getRegions,
+    addCustomWaterSource
 } from "@/lib/waterData";
 
 // ── Geo circle drawn as a MapLibre layer (scales with zoom) ───
 function GeoCircle({ source }: { source: WaterSource }) {
     const { map, isLoaded } = useMap();
     const sourceId = `geo-circle-src-${source.id}`;
-    const fillId   = `geo-circle-fill-${source.id}`;
+    const fillId = `geo-circle-fill-${source.id}`;
     const strokeId = `geo-circle-stroke-${source.id}`;
 
-    const color = getDisturbanceColor(source.disturbancePercentage);
-    const hex   = colorToHex(color);
+    const color = getDisturbanceColor(source);
+    const hex = colorToHex(color);
 
     useEffect(() => {
         if (!map || !isLoaded) return;
@@ -38,7 +42,7 @@ function GeoCircle({ source }: { source: WaterSource }) {
             const dy = radiusKm / 110.574;
             coords.push([
                 source.longitude + dx * Math.cos(angle),
-                source.latitude  + dy * Math.sin(angle),
+                source.latitude + dy * Math.sin(angle),
             ]);
         }
 
@@ -74,7 +78,7 @@ function GeoCircle({ source }: { source: WaterSource }) {
         return () => {
             try {
                 if (map.getLayer(strokeId)) map.removeLayer(strokeId);
-                if (map.getLayer(fillId))   map.removeLayer(fillId);
+                if (map.getLayer(fillId)) map.removeLayer(fillId);
                 if (map.getSource(sourceId)) map.removeSource(sourceId);
             } catch { /* ignore */ }
         };
@@ -85,7 +89,7 @@ function GeoCircle({ source }: { source: WaterSource }) {
 
 // ── Centre dot + disturbance triangles, each as its own geo-anchored marker ───
 function GeoCircleOverlay({ source }: { source: WaterSource }) {
-    const color = getDisturbanceColor(source.disturbancePercentage);
+    const color = getDisturbanceColor(source);
     return (
         <>
             <MapMarker longitude={source.longitude} latitude={source.latitude} anchor="center">
@@ -97,13 +101,25 @@ function GeoCircleOverlay({ source }: { source: WaterSource }) {
                         boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
                     }} />
                 </MarkerContent>
+                <MarkerPopup closeButton>
+                    <div className="p-2 min-w-[180px]">
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">{source.label}</h3>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-3">{getDisturbanceLabel(source)}</p>
+                        <Link
+                            href={`/water-source/${source.id}`}
+                            className="block text-center rounded-md bg-[#0277bd] py-2 text-xs font-semibold text-white hover:bg-[#01579b] transition-colors shadow-sm"
+                        >
+                            View Detailed Analysis →
+                        </Link>
+                    </div>
+                </MarkerPopup>
             </MapMarker>
 
             {source.disturbances.map((d, i) => {
                 const angle = (i / source.disturbances.length) * 2 * Math.PI - Math.PI / 2;
                 const radiusDeg = 0.012;
                 const lng = source.longitude + radiusDeg * Math.cos(angle) / Math.cos(source.latitude * Math.PI / 180);
-                const lat = source.latitude  + radiusDeg * Math.sin(angle);
+                const lat = source.latitude + radiusDeg * Math.sin(angle);
                 return (
                     <MapMarker key={d.id} longitude={lng} latitude={lat} anchor="center">
                         <MarkerContent>
@@ -123,88 +139,148 @@ function GeoCircleOverlay({ source }: { source: WaterSource }) {
 
 
 
-// ── Search page ───────────────────────────────────────────────
-function SearchPage({ onSearch }: { onSearch: (region: Region, name: string) => void }) {
-    const [query, setQuery] = useState("");
-    const [error, setError] = useState("");
-    const suggestions = ["Ohrid", "Prespa", "Dojran", "Skopje", "Vardar", "Bitola", "Strumica", "Custom"];
 
-    const handleSubmit = () => {
-        const key = query.trim().toLowerCase();
-        const allRegions = getRegions();
-        const region = allRegions[key];
-        if (region) { setError(""); onSearch(region, query.trim()); }
-        else setError(`No data found for "${query}". Try: ${suggestions.join(", ")}`);
-    };
-
-    return (
-        <div className="flex h-full w-full flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 transition-colors">
-            <div className="flex min-w-[360px] flex-col items-center gap-5 rounded-2xl bg-white dark:bg-slate-800 p-10 sm:px-12 shadow-xl ring-1 ring-slate-900/5 dark:ring-slate-100/5 transition-colors">
-                <div className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">💧 Water Monitor</div>
-                <div className="text-center text-sm text-slate-600 dark:text-slate-400">
-                    Enter a Macedonian town, lake, or river to view water quality data
-                </div>
-                <input
-                    type="text" value={query}
-                    onChange={(e) => { setQuery(e.target.value); setError(""); }}
-                    onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-                    placeholder="e.g. Ohrid, Vardar, Skopje..."
-                    className="w-full rounded-md border-0 py-2.5 px-3.5 text-slate-900 dark:text-slate-100 dark:bg-slate-700 ring-1 ring-inset ring-slate-300 dark:ring-slate-600 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-[#0277bd] sm:text-sm outline-none transition-colors"
-                    autoFocus
-                />
-                {error && <div className="text-center text-xs font-medium text-red-600 dark:text-red-400">{error}</div>}
-                <button onClick={handleSubmit} className="w-full rounded-md bg-[#0277bd] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#01579b]">
-                    View Water Data →
-                </button>
-                <div className="flex flex-wrap justify-center gap-2 mt-2">
-                    {suggestions.map((s) => (
-                        <button key={s} onClick={() => { setQuery(s); setError(""); }} className="rounded-full border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-3 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 transition-colors hover:bg-slate-100 dark:hover:bg-slate-600">
-                            {s}
-                        </button>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-}
 
 // ── Map page ──────────────────────────────────────────────────
-function MapPage({ region, regionName, onBack }: { region: Region; regionName: string; onBack: () => void; }) {
+function MapPage({ region, regionName, onAddComplete }: { region: Region; regionName: string; onAddComplete: () => void }) {
     const mapRef = useRef<MapRef>(null);
     const waterSources = region.waterSources;
 
+    const [draftPoint, setDraftPoint] = useState<{ lng: number; lat: number } | null>(null);
+    const [label, setLabel] = useState("");
+    const [selectedDisturbances, setSelectedDisturbances] = useState<string[]>([]);
+    const [isPlacementMode, setIsPlacementMode] = useState(false);
+
+    useEffect(() => {
+        if (!mapRef.current) return;
+        const map = mapRef.current;
+
+        const handleClick = (e: any) => {
+            if (isPlacementMode) {
+                setDraftPoint({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+                setIsPlacementMode(false);
+            }
+        };
+
+        map.on("click", handleClick);
+
+        return () => {
+            map.off("click", handleClick);
+        };
+    }, [isPlacementMode]);
+
+    const handleSavePoint = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!draftPoint || !label.trim()) return;
+
+        addCustomWaterSource(label, draftPoint.lng, draftPoint.lat, selectedDisturbances);
+        setDraftPoint(null);
+        setLabel("");
+        setSelectedDisturbances([]);
+        onAddComplete();
+    };
+
+    const handleCheckbox = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        if (e.target.checked) {
+            setSelectedDisturbances(prev => [...prev, val]);
+        } else {
+            setSelectedDisturbances(prev => prev.filter(d => d !== val));
+        }
+    };
+
     return (
         <div className="relative h-full w-full">
-            <Map ref={mapRef} center={region.center} zoom={region.zoom}>
+            <Map ref={mapRef} center={region.center} zoom={region.zoom} styles={{ light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json" }} doubleClickZoom={false}>
                 {waterSources.map((source) => (
                     <GeoCircle key={`circle-${source.id}`} source={source} />
                 ))}
                 {waterSources.map((source) => (
                     <GeoCircleOverlay key={`overlay-${source.id}`} source={source} />
                 ))}
+
+                {draftPoint && (
+                    <MapMarker longitude={draftPoint.lng} latitude={draftPoint.lat}>
+                        <MarkerContent>
+                            <div className="relative h-4 w-4 rounded-full border-2 border-white bg-blue-500 shadow-lg animate-pulse" />
+                        </MarkerContent>
+                        <MarkerPopup closeButton>
+                            <div className="min-w-[220px] p-1">
+                                <h3 className="mb-3 text-sm font-semibold text-slate-800 dark:text-slate-100">Add Tracked Point</h3>
+                                <form onSubmit={handleSavePoint} className="flex flex-col gap-3">
+                                    <div>
+                                        <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Name / Label</label>
+                                        <input required autoFocus type="text" value={label} onChange={e => setLabel(e.target.value)} placeholder="e.g. My Secret Spot" className="w-full rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 px-2.5 py-1.5 text-sm text-slate-800 dark:text-slate-100 outline-none focus:border-[#0277bd] focus:ring-1 focus:ring-[#0277bd] transition-all" />
+                                    </div>
+                                    <div className="flex gap-3 text-[10px] font-mono text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/30 px-2 py-1.5 rounded border border-slate-100 dark:border-slate-700/50">
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] uppercase tracking-tighter opacity-50">Longitude</span>
+                                            <span>{draftPoint.lng.toFixed(5)}</span>
+                                        </div>
+                                        <div className="flex flex-col border-l border-slate-200 dark:border-slate-700 pl-3">
+                                            <span className="text-[9px] uppercase tracking-tighter opacity-50">Latitude</span>
+                                            <span>{draftPoint.lat.toFixed(5)}</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Disturbances</label>
+                                        <div className="flex flex-col gap-2">
+                                            {["algae", "pollution", "turbidity", "temperature"].map((dist) => (
+                                                <label key={dist} className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                                                    <input type="checkbox" value={dist} checked={selectedDisturbances.includes(dist)} onChange={handleCheckbox} className="rounded border-slate-300 text-[#0277bd] focus:ring-[#0277bd]" />
+                                                    <span className="capitalize">{dist}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="mt-2 flex gap-2 border-t border-slate-100 dark:border-slate-700/50 pt-3">
+                                        <button type="button" onClick={() => setDraftPoint(null)} className="flex-1 rounded-md bg-slate-100 dark:bg-slate-700 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">Cancel</button>
+                                        <button type="submit" className="flex-1 rounded-md bg-[#0277bd] py-1.5 text-xs font-semibold text-white hover:bg-[#01579b] transition-colors">Save</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </MarkerPopup>
+                    </MapMarker>
+                )}
             </Map>
 
-            {/* Back button */}
-            <button onClick={onBack} className="absolute left-4 top-4 z-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 px-3.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 shadow-sm backdrop-blur transition-colors hover:bg-slate-50 dark:hover:bg-slate-700">
-                ← Back
-            </button>
+
 
             {/* Region title */}
             <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-lg bg-white/95 dark:bg-slate-800/95 px-5 py-2 text-sm font-semibold text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur border border-slate-200 dark:border-slate-700 transition-colors">
                 {regionName}
             </div>
 
+            {/* Action Button */}
+            <button
+                onClick={() => setIsPlacementMode(!isPlacementMode)}
+                className={cn(
+                    "fixed bottom-6 right-24 z-50 flex h-12 items-center gap-2 rounded-full px-6 font-bold shadow-lg ring-1 transition-all hover:scale-105 active:scale-95",
+                    isPlacementMode
+                        ? "bg-red-500 text-white ring-red-600 animate-pulse"
+                        : "bg-[#0277bd] text-white ring-[#01579b]"
+                )}
+            >
+                <Plus className={cn("h-5 w-5 transition-transform", isPlacementMode && "rotate-45")} />
+                {isPlacementMode ? "Click Map to Place" : "Add a Dot"}
+            </button>
+
             {/* Info panel */}
             <div className="absolute right-4 top-4 z-10 flex min-w-[260px] max-w-[300px] flex-col gap-3 rounded-xl bg-white/95 dark:bg-slate-800/95 p-4 shadow-md backdrop-blur border border-slate-200 dark:border-slate-700 transition-colors">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Water Sources
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3 mb-1">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Water Sources
+                    </div>
+                    <div className="rounded-sm border-2 border-blue-900 bg-blue-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-900 shadow-sm dark:border-blue-400 dark:bg-blue-950 dark:text-blue-300">
+                        Last Updated: 13:00
+                    </div>
                 </div>
                 {waterSources.map((source) => {
-                    const color = getDisturbanceColor(source.disturbancePercentage);
+                    const color = getDisturbanceColor(source);
                     return (
                         <div key={source.id} className="flex flex-col gap-1.5 border-b border-slate-100 dark:border-slate-700 pb-2.5 last:border-0 last:pb-0">
                             <div className="text-xs font-semibold text-slate-900 dark:text-slate-100">{source.label}</div>
-                            <div className="text-sm font-bold" style={{ color }}>{source.disturbancePercentage}% Disturbance</div>
+                            <div className="text-sm font-bold" style={{ color }}>{getDisturbanceLabel(source)}</div>
                             {source.disturbances.length > 0 && (
                                 <div className="mt-0.5 flex flex-col gap-1.5">
                                     {source.disturbances.map((d) => (
@@ -229,11 +305,23 @@ function MapPage({ region, regionName, onBack }: { region: Region; regionName: s
 
             {/* Legend */}
             <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-start gap-6 rounded-xl bg-white/95 dark:bg-slate-800/95 px-4 py-3 shadow-md backdrop-blur border border-slate-200 dark:border-slate-700 transition-colors">
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1.5">
                     <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Disturbance Intensity</div>
-                    <div className="h-3 w-44 rounded" style={{ background: "linear-gradient(to right, #22c55e, #eab308, #f97316, #ef4444)" }} />
-                    <div className="flex w-44 justify-between text-[10px] text-slate-500 dark:text-slate-400">
-                        <span>0% (Healthy)</span><span>100% (Critical)</span>
+                    <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
+                        <div className="h-3 w-3 shrink-0 rounded-full bg-[#22c55e]" />
+                        <span>0% - healthy (0 disturbances)</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
+                        <div className="h-3 w-3 shrink-0 rounded-full bg-[#eab308]" />
+                        <span>45% - mediocre (1-2 disturbances)</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
+                        <div className="h-3 w-3 shrink-0 rounded-full bg-[#f97316]" />
+                        <span>75% - harmfull (3 disturbances)</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
+                        <div className="h-3 w-3 shrink-0 rounded-full bg-[#ef4444]" />
+                        <span>100% - critical (4+ disturbances)</span>
                     </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -259,12 +347,24 @@ function MapPage({ region, regionName, onBack }: { region: Region; regionName: s
 
 // ── Root ──────────────────────────────────────────────────────
 export function OhridMap() {
-    const [activeRegion, setActiveRegion] = useState<Region | null>(null);
-    const [regionName, setRegionName] = useState("");
+    const [region, setRegion] = useState<Region | null>(null);
+    const [refreshKey, setRefreshKey] = useState(0);
 
-    if (!activeRegion) {
-        return <SearchPage onSearch={(region, name) => { setActiveRegion(region); setRegionName(name); }} />;
-    }
+    useEffect(() => {
+        const allRegions = getRegions();
+        if (allRegions["custom"]) {
+            setRegion(allRegions["custom"]);
+        } else {
+            // Default empty map focused on Macedonia if no custom points exist
+            setRegion({
+                center: [21.7, 41.6],
+                zoom: 8,
+                waterSources: []
+            });
+        }
+    }, [refreshKey]);
 
-    return <MapPage region={activeRegion} regionName={regionName} onBack={() => setActiveRegion(null)} />;
+    if (!region) return null;
+
+    return <MapPage region={region} regionName="Custom Water Sources" onAddComplete={() => setRefreshKey(k => k + 1)} />;
 }
