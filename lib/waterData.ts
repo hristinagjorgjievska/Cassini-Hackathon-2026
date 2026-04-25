@@ -1,7 +1,7 @@
 export const disturbanceIntensityColors: [number, string][] = [
     [0, "#22c55e"],   // Green
-    [33, "#eab308"],  // Yellow
-    [66, "#f97316"],  // Orange
+    [45, "#eab308"],  // Yellow
+    [75, "#f97316"],  // Orange
     [100, "#ef4444"], // Red
 ];
 
@@ -21,6 +21,13 @@ export function getDisturbanceColor(percentage: number) {
         }
     }
     return disturbanceIntensityColors[disturbanceIntensityColors.length-1][1];
+}
+
+export function getDisturbanceLabel(percentage: number): string {
+    if (percentage === 0) return "0% – Healthy";
+    if (percentage <= 45) return `${percentage}% – Moderate`;
+    if (percentage <= 75) return `${percentage}% – Severe`;
+    return `${percentage}% – Critical`;
 }
 
 export function colorToHex(color: string): string {
