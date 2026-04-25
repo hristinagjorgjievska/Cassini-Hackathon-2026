@@ -1,63 +1,9 @@
-# 🌊 AquaOrbit — Water Quality Monitor
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Real-time water quality analysis combining a **Next.js** frontend with a **Copernicus Sentinel-2** satellite data pipeline.
+## Getting Started
 
----
+First, run the development server:
 
-## Project Structure
-
-```
-cassini-python/
-├── app/                        # Next.js app router pages
-│   ├── my-map/                 # Interactive water source map
-│   ├── my-water/               # Water dashboard
-│   ├── water-source/[id]/      # Per-source satellite detail page
-│   ├── login/ & signup/        # Auth pages
-│   └── layout.tsx
-├── components/
-│   ├── OhridMap.tsx            # Map + POI management + satellite trigger
-│   └── TopNav.tsx
-├── lib/
-│   ├── waterData.ts            # Types, localStorage helpers, satellite mapping
-│   └── satelliteApi.ts         # fetch() client for the Python API
-├── api.py                      # FastAPI app — endpoints + ThreadPoolExecutor
-├── data_fetch.py               # openEO pipeline — fetches Sentinel-2 bands
-├── processing.py               # NDWI/NDCI computation + pollution classification
-├── requirements.txt            # Python dependencies
-└── water_quality_notebook.ipynb  # Copernicus JupyterHub exploration notebook
-```
-
----
-
-## Setup
-
-### 1. Install frontend dependencies
-```bash
-npm install
-```
-
-### 2. Install Python dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 3. First-time Copernicus authentication
-```bash
-python -c "import openeo; c = openeo.connect('https://openeo.dataspace.copernicus.eu'); c.authenticate_oidc()"
-```
-
----
-
-## Running the App
-
-Both servers must be running simultaneously — open two terminal windows.
-
-**Terminal 1 — Python satellite API (port 8000):**
-```bash
-uvicorn api:app --host 0.0.0.0 --port 8000 --reload
-```
-
-**Terminal 2 — Next.js frontend (port 3000):**
 ```bash
 npm run dev
 ```
