@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { useAuth } from "@/lib/AuthContext";
 
 type IndicatorStatus = "healthy" | "warning" | "critical";
 
@@ -24,6 +26,7 @@ const statusClasses: Record<IndicatorStatus, string> = {
 };
 
 export default function MyProfilePage() {
+  const { user } = useAuth();
   const [data, setData] = useState<ProfilePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -60,6 +63,7 @@ export default function MyProfilePage() {
   }, []);
 
   return (
+    <ProtectedRoute>
     <section className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6">
       <h1 className="text-3xl font-semibold tracking-tight">My Profile</h1>
       <p className="mt-2 text-muted-foreground">
@@ -104,5 +108,6 @@ export default function MyProfilePage() {
         </div>
       )}
     </section>
+    </ProtectedRoute>
   );
 }
