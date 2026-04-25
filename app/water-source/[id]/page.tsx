@@ -226,15 +226,23 @@ export default function WaterSourceDetailsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { label: "NDWI", value: source.satelliteData.ndwi?.toFixed(4) ?? "N/A", hint: "Water index" },
-                      { label: "NDCI", value: source.satelliteData.ndci?.toFixed(4) ?? "N/A", hint: "Chlorophyll" },
-                      { label: "Turbidity", value: source.satelliteData.turbidity?.toFixed(4) ?? "N/A", hint: "Water clarity" },
-                      { label: "Sed. Load", value: source.satelliteData.suspendent_sediment?.toFixed(4) ?? "N/A", hint: "Suspended sediment" },
-                    ].map(({ label, value, hint }) => (
-                      <div key={label} className="flex flex-col gap-0.5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</span>
-                        <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono">{value}</span>
-                        <span className="text-[10px] text-slate-400">{hint}</span>
+                      { label: "NDWI", value: source.satelliteData.ndwi?.toFixed(4) ?? "N/A", hint: "Water index", explanation: "Normalized Difference Water Index. Values > 0 indicate water presence. Negative values indicate soil/vegetation." },
+                      { label: "NDCI", value: source.satelliteData.ndci?.toFixed(4) ?? "N/A", hint: "Chlorophyll", explanation: "Values > 0.05 indicate high algae or chlorophyll presence, which is often a sign of pollution or blooming." },
+                      { label: "Turbidity", value: source.satelliteData.turbidity?.toFixed(4) ?? "N/A", hint: "Water clarity", explanation: "Measures cloudiness. Lower or negative values mean clearer water. Higher values mean reduced clarity." },
+                      { label: "Sed. Load", value: source.satelliteData.suspendent_sediment?.toFixed(4) ?? "N/A", hint: "Suspended sediment", explanation: "Estimates solid particles suspended in the water. High values indicate murky or heavily disturbed water." },
+                    ].map(({ label, value, hint, explanation }) => (
+                      <div key={label} className="group relative flex flex-col gap-0.5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-help">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</span>
+                        <span className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono">{value}</span>
+                        <span className="text-xs text-slate-400">{hint}</span>
+                        
+                        {/* Tooltip */}
+                        <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-56 -translate-x-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                          <div className="rounded-lg bg-slate-900 dark:bg-white p-3 text-xs leading-relaxed text-slate-100 dark:text-slate-800 shadow-xl text-center ring-1 ring-black/5 dark:ring-white/10">
+                            {explanation}
+                            <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-slate-900 dark:border-t-white" />
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>

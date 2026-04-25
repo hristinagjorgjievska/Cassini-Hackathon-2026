@@ -112,10 +112,10 @@ export async function getAccountDashboard(
   const averagePh =
     phItems.length > 0
       ? Number(
-          (
-            phItems.reduce((sum, item) => sum + item.value, 0) / phItems.length
-          ).toFixed(2),
-        )
+        (
+          phItems.reduce((sum, item) => sum + item.value, 0) / phItems.length
+        ).toFixed(2),
+      )
       : 0;
 
   const alertCount = indicatorsWithStatus.filter(

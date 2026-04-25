@@ -27,7 +27,7 @@ const getMockUsers = () => {
   const stored = localStorage.getItem("mock_users");
   if (stored) return JSON.parse(stored);
   // Default demo user
-  const defaultUsers = [{ id: "demo-1", name: "Marko", email: "marko@example.com", pass: "password", role: "farmer" }];
+  const defaultUsers = [{ id: "demo-1", name: "Trajche", email: "trajche@example.com", pass: "password", role: "free" }];
   localStorage.setItem("mock_users", JSON.stringify(defaultUsers));
   return defaultUsers;
 };

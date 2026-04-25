@@ -3,13 +3,11 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import Link from "next/link";
-import { roleDetailsMap } from "@/lib/roleData";
 
 export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("farmer");
   const [error, setError] = useState("");
   const { signup } = useAuth();
 
@@ -17,7 +15,7 @@ export default function SignupPage() {
     e.preventDefault();
     setError("");
     try {
-      await signup(name, email, password, role);
+      await signup(name, email, password, "free");
     } catch (err: any) {
       setError(err.message);
     }
@@ -71,30 +69,6 @@ export default function SignupPage() {
                 className="relative block w-full rounded-md border-0 py-2.5 px-3 text-slate-900 dark:text-white bg-white dark:bg-slate-900 ring-1 ring-inset ring-slate-300 dark:ring-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#0277bd] sm:text-sm sm:leading-6"
                 placeholder="••••••••"
               />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Account Role</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="relative block w-full rounded-md border-0 py-2.5 px-3 text-slate-900 dark:text-white bg-white dark:bg-slate-900 ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#0277bd] sm:text-sm sm:leading-6"
-              >
-                <option value="farmer">Farmer</option>
-                <option value="institution">Agriculture Institution</option>
-                <option value="supermarket">Supermarket / Export</option>
-              </select>
-            </div>
-
-            <div className="rounded-md bg-slate-50 dark:bg-slate-900/50 p-4 ring-1 ring-inset ring-slate-200 dark:ring-white/10">
-              <div className="mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Payment Plan</span>
-                <p className="mt-1 text-sm font-medium text-slate-900 dark:text-white">{roleDetailsMap[role].plan}</p>
-              </div>
-              <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Permissions</span>
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{roleDetailsMap[role].permissions}</p>
-              </div>
             </div>
           </div>
 

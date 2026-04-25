@@ -41,7 +41,12 @@ export async function analyzeWater(
         body: JSON.stringify({ lat, lon }),
     });
     if (!res.ok) {
-        throw new Error(`Satellite API error: ${res.status} ${res.statusText}`);
+        let errMsg = `${res.status} ${res.statusText}`;
+        try {
+            const errData = await res.json();
+            errMsg = `${errMsg} - ${JSON.stringify(errData)}`;
+        } catch (e) {}
+        throw new Error(`Satellite API error: ${errMsg}`);
     }
     return res.json();
 }

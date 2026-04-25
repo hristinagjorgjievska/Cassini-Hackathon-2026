@@ -1,3 +1,5 @@
+import { sendAnalysisCompleteEmail } from "./sendEmail";
+
 export const disturbanceIntensityColors: [number, string][] = [
     [0, "#22c55e"],   // Healthy (Green)
     [45, "#eab308"],  // Moderate (Yellow)
@@ -287,6 +289,12 @@ export function deleteCustomWaterSource(id: number) {
     localStorage.setItem("custom_water_sources", JSON.stringify(filtered));
 }
 
+export function clearAllCustomWaterSources() {
+    if (typeof window === "undefined") return;
+    localStorage.removeItem("custom_water_sources");
+    window.dispatchEvent(new Event("storage"));
+}
+
 export function getWaterSourceById(id: number): WaterSource | null {
     const currentRegions = getRegions();
     const allSources = Object.values(currentRegions).flatMap(r => r.waterSources);
@@ -388,6 +396,11 @@ export function enrichWaterSourceWithSatellite(
     };
 
     localStorage.setItem("custom_water_sources", JSON.stringify(customSources));
+    
+    // Send an email notification that the analysis has completed
+    const disturbanceNames = disturbances.map(d => disturbanceDescriptions[d.type] || d.type);
+    sendAnalysisCompleteEmail("ognen.mlad@gmail.com", customSources[index].label, disturbanceNames, data.pollution_status);
+
     // Notify OhridMap to re-render
     window.dispatchEvent(new Event("storage"));
 }

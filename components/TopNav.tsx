@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
+import { cn } from "@/lib/utils";
 
 const navItems = [
   { label: "My Map", href: "/my-map", aliases: ["/"] },
@@ -19,43 +20,49 @@ export function TopNav() {
   const { user, logout } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="text-lg font-semibold tracking-tight">
-          Water Monitor
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-950/80 backdrop-blur-md transition-colors">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <Link href="/" className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+          AgroWater
         </Link>
-        <nav className="flex items-center gap-2">
+        <nav className="flex items-center gap-6">
           {!user ? (
-            <>
-              <Link href="/login" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900">
+            <div className="flex gap-3">
+              <Link href="/login" className="px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
                 Log In
               </Link>
-              <Link href="/signup" className="rounded-md bg-[#0277bd] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#01579b]">
+              <Link href="/signup" className="rounded-md bg-[#0277bd] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#01579b] shadow-sm">
                 Sign Up
               </Link>
-            </>
+            </div>
           ) : (
             <>
-              {navItems.map((item) => {
-                const active = isActive(pathname, item.href, item.aliases);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={[
-                      "rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                      active
-                        ? "bg-[#0277bd] text-white"
-                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100",
-                    ].join(" ")}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-              <button 
+              <div className="flex items-center gap-6">
+                {navItems.map((item) => {
+                  const active = isActive(pathname, item.href, item.aliases);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "relative py-5 text-sm font-medium transition-colors",
+                        active
+                          ? "text-[#0277bd] dark:text-[#29b6f6]"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      )}
+                    >
+                      {item.label}
+                      {active && (
+                        <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[#0277bd] dark:bg-[#29b6f6]" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+              <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-2" />
+              <button
                 onClick={logout}
-                className="ml-2 rounded-md px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-900/20"
+                className="text-sm font-medium text-slate-500 transition-colors hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
               >
                 Logout
               </button>

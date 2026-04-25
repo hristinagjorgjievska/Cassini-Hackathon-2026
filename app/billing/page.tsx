@@ -8,10 +8,13 @@ import Link from "next/link";
 
 export default function BillingPage() {
   const { user, updateRole } = useAuth();
-  const currentRole = user?.role || "farmer";
+  let currentRole = user?.role || "free";
+  if (!roleDetailsMap[currentRole]) {
+    currentRole = "free";
+  }
 
   // Order of tiers by price/power
-  const tierOrder = ["farmer", "supermarket", "institution"];
+  const tierOrder = ["free", "premium", "pro"];
 
   return (
     <ProtectedRoute>
@@ -28,8 +31,6 @@ export default function BillingPage() {
             {tierOrder.map((key) => {
               const tier = roleDetailsMap[key];
               const isCurrent = currentRole === key;
-              const [priceStr, ...rest] = tier.plan.split(" ");
-              const description = rest.join(" ");
 
               return (
                 <div
@@ -56,11 +57,13 @@ export default function BillingPage() {
                     >
                       {tier.label}
                     </h3>
-                    <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-400">{description}</p>
                     <p className="mt-6 flex items-baseline gap-x-1">
                       <span className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
-                        {priceStr}
+                        {tier.id === "free" ? "Free" : tier.label}
                       </span>
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      {tier.plan}
                     </p>
                     <ul className="mt-8 space-y-3 text-sm leading-6 text-slate-600 dark:text-slate-400 xl:mt-10">
                       {tier.permissions.split(",").map((perm, idx) => (

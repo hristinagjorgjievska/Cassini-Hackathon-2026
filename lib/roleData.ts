@@ -6,22 +6,22 @@ export type RoleDetails = {
 };
 
 export const roleDetailsMap: Record<string, RoleDetails> = {
-  farmer: {
-    id: "farmer",
-    label: "Farmer",
-    plan: "Free (or $5/mo Premium)",
-    permissions: "Report water disturbances, view local water source status, receive alerts for nearby areas."
+  free: {
+    id: "free",
+    label: "Free Tier",
+    plan: "Free (1 Month Trial)",
+    permissions: "Track up to 2 water sources, Basic satellite analysis."
   },
-  institution: {
-    id: "institution",
-    label: "Agriculture Institution",
-    plan: "$50/mo (Enterprise Plan)",
-    permissions: "Full access to regional data, bulk download reports, API access, and analytics dashboard."
+  premium: {
+    id: "premium",
+    label: "Premium",
+    plan: "$19/mo",
+    permissions: "Track up to 50 water sources, Advanced satellite metrics, Priority email alerts."
   },
-  supermarket: {
-    id: "supermarket",
-    label: "Supermarket / Export",
-    plan: "$20/mo (Business Plan)",
-    permissions: "View water safety certifications, track supply chain water quality, advanced forecasting."
+  pro: {
+    id: "pro",
+    label: "Pro",
+    plan: "$49/mo",
+    permissions: "Unlimited water sources, API access, Historical data export, White-label reports."
   }
 };
