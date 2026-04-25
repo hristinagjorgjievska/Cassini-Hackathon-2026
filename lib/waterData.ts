@@ -69,7 +69,33 @@ export const disturbanceDescriptions: Record<string, string> = {
 };
 
 export type Disturbance = { id: number; type: string; };
-export type WaterSource = { id: number; longitude: number; latitude: number; disturbancePercentage: number; label: string; disturbances: Disturbance[]; };
+
+/** Raw response from the Python FastAPI /analyze-water endpoint */
+export type SatelliteData = {
+    ndwi: number | null;
+    ndci: number | null;
+    turbidity: number | null;
+    suspendent_sediment: number | null;
+    water_detected: boolean;
+    pollution_status: string;
+    timestamp: string;
+};
+
+export type WaterSource = {
+    id: number;
+    longitude: number;
+    latitude: number;
+    disturbancePercentage: number;
+    label: string;
+    disturbances: Disturbance[];
+    /** true while satellite analysis is in flight */
+    pending?: boolean;
+    /** lifecycle state of the satellite fetch */
+    satelliteStatus?: "pending" | "done" | "error" | "unavailable";
+    /** raw API response stored after a successful analysis */
+    satelliteData?: SatelliteData;
+};
+
 export type Region = { center: [number, number]; zoom: number; waterSources: WaterSource[]; };
 
 export const defaultRegions: Record<string, Region> = {
@@ -198,23 +224,36 @@ export function getRegions(): Record<string, Region> {
     }
 }
 
-export function addCustomWaterSource(label: string, longitude: number, latitude: number, selectedDisturbances: string[]) {
-    if (typeof window === "undefined") return;
+/**
+ * Creates a new custom water source in localStorage immediately with a
+ * pending satellite state. Returns the new source's id so the caller
+ * can track it during the async satellite fetch.
+ */
+export function addCustomWaterSource(
+    label: string,
+    longitude: number,
+    latitude: number,
+): number {
+    if (typeof window === "undefined") return -1;
 
     const stored = localStorage.getItem("custom_water_sources");
     const customSources: WaterSource[] = stored ? JSON.parse(stored) : [];
 
+    const id = Date.now();
     const newSource: WaterSource = {
-        id: Date.now(), // Generate unique ID
+        id,
         longitude,
         latitude,
         disturbancePercentage: 0,
         label,
-        disturbances: selectedDisturbances.map((type, i) => ({ id: Date.now() + i, type }))
+        disturbances: [],
+        pending: true,
+        satelliteStatus: "pending",
     };
 
     customSources.push(newSource);
     localStorage.setItem("custom_water_sources", JSON.stringify(customSources));
+    return id;
 }
 
 export function updateCustomWaterSource(id: number, label: string, longitude: number, latitude: number, selectedDisturbances: string[]) {
@@ -274,4 +313,132 @@ export function getMockForecast(id: number) {
         { day: "In 2 Days", status: "Mediocre", score: 45, color: "#eab308" },
         { day: "In 3 Days", status: "Harmfull", score: 75, color: "#f97316" }
     ];
+}
+
+// ── Satellite integration utilities ────────────────────────────────────────────
+
+/**
+ * Infers disturbances from raw satellite data returned by the Python API.
+ * This replaces the manual checkbox selection entirely.
+ */
+export function mapSatelliteToDisturbances(data: SatelliteData): Disturbance[] {
+    const result: Disturbance[] = [];
+    let id = 1;
+
+    // Algae proxy: chlorophyll index above threshold
+    if (data.ndci !== null && data.ndci > 0.05) {
+        result.push({ id: id++, type: "algae" });
+    }
+    // Pollution: derived directly from the pollution classification
+    if (data.pollution_status === "HIGH" || data.pollution_status === "MEDIUM") {
+        result.push({ id: id++, type: "pollution" });
+    }
+    // Turbidity: negative turbidity signal or high suspended sediment
+    const hasTurbidity =
+        (data.turbidity !== null && data.turbidity < -0.05) ||
+        (data.suspendent_sediment !== null && data.suspendent_sediment > 0.15);
+    if (hasTurbidity) {
+        result.push({ id: id++, type: "turbidity" });
+    }
+
+    return result;
+}
+
+/** Maps pollution_status string → disturbancePercentage number for marker colouring */
+export function mapPollutionToPercentage(status: string): number {
+    if (status === "HIGH") return 75;
+    if (status === "MEDIUM") return 45;
+    return 0;
+}
+
+/**
+ * Updates a custom water source in localStorage with real satellite data.
+ * Fires a storage event so any listening components re-render.
+ */
+export function enrichWaterSourceWithSatellite(
+    id: number,
+    data: SatelliteData,
+): void {
+    if (typeof window === "undefined") return;
+
+    const stored = localStorage.getItem("custom_water_sources");
+    if (!stored) return;
+
+    const customSources: WaterSource[] = JSON.parse(stored);
+    const index = customSources.findIndex((s) => s.id === id);
+    if (index === -1) return;
+
+    const disturbances = mapSatelliteToDisturbances(data);
+    const levelFromCount =
+        disturbances.length >= 4 ? 100 :
+        disturbances.length === 3 ? 75 :
+        disturbances.length >= 1 ? 45 : 0;
+    const disturbancePercentage = Math.max(
+        mapPollutionToPercentage(data.pollution_status),
+        levelFromCount,
+    );
+
+    customSources[index] = {
+        ...customSources[index],
+        pending: false,
+        satelliteStatus: "done",
+        satelliteData: data,
+        disturbances,
+        disturbancePercentage,
+    };
+
+    localStorage.setItem("custom_water_sources", JSON.stringify(customSources));
+    // Notify OhridMap to re-render
+    window.dispatchEvent(new Event("storage"));
+}
+
+/**
+ * Marks a water source with a terminal satellite status (error / unavailable).
+ * Also fires a storage event so the map re-renders the marker.
+ */
+export function markWaterSourceSatelliteStatus(
+    id: number,
+    status: "error" | "unavailable",
+): void {
+    if (typeof window === "undefined") return;
+
+    const stored = localStorage.getItem("custom_water_sources");
+    if (!stored) return;
+
+    const customSources: WaterSource[] = JSON.parse(stored);
+    const index = customSources.findIndex((s) => s.id === id);
+    if (index === -1) return;
+
+    customSources[index] = {
+        ...customSources[index],
+        pending: false,
+        satelliteStatus: status,
+    };
+
+    localStorage.setItem("custom_water_sources", JSON.stringify(customSources));
+    window.dispatchEvent(new Event("storage"));
+}
+
+/**
+ * Re-marks a source as pending so a retry analysis can be triggered.
+ */
+export function markWaterSourcePending(id: number): void {
+    if (typeof window === "undefined") return;
+
+    const stored = localStorage.getItem("custom_water_sources");
+    if (!stored) return;
+
+    const customSources: WaterSource[] = JSON.parse(stored);
+    const index = customSources.findIndex((s) => s.id === id);
+    if (index === -1) return;
+
+    customSources[index] = {
+        ...customSources[index],
+        pending: true,
+        satelliteStatus: "pending",
+        satelliteData: undefined,
+    };
+
+    localStorage.setItem("custom_water_sources", JSON.stringify(customSources));
+    window.dispatchEvent(new Event("storage"));
 }

@@ -1,20 +1,24 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useState, use } from "react";
-import { 
-  getWaterSourceById, 
-  getDisturbanceColor, 
-  getDisturbanceLabel, 
-  getMockHistoricalData, 
+import { useEffect, useState } from "react";
+import {
+  getWaterSourceById,
+  getDisturbanceColor,
+  getDisturbanceLabel,
+  getMockHistoricalData,
   getMockForecast,
-  WaterSource,
+  enrichWaterSourceWithSatellite,
+  markWaterSourceSatelliteStatus,
+  markWaterSourcePending,
+  type WaterSource,
   disturbanceColors,
-  disturbanceDescriptions
+  disturbanceDescriptions,
 } from "@/lib/waterData";
+import { analyzeWater, checkApiHealth } from "@/lib/satelliteApi";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
-import { ArrowLeft, MapPin, Calendar, TrendingUp, Droplets } from "lucide-react";
+import { ArrowLeft, MapPin, TrendingUp, Droplets, Satellite, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
 export default function WaterSourceDetailsPage() {
@@ -23,17 +27,51 @@ export default function WaterSourceDetailsPage() {
   const [source, setSource] = useState<WaterSource | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [forecast, setForecast] = useState<any[]>([]);
+  const [retrying, setRetrying] = useState(false);
+
+  const reload = () => {
+    const data = getWaterSourceById(id);
+    if (data) {
+      setSource(data);
+      setHistory(getMockHistoricalData(id));
+      setForecast(getMockForecast(id));
+    }
+  };
 
   useEffect(() => {
-    if (id) {
-      const data = getWaterSourceById(id);
-      if (data) {
-        setSource(data);
-        setHistory(getMockHistoricalData(id));
-        setForecast(getMockForecast(id));
-      }
-    }
+    if (id) reload();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Listen for satellite enrichment updates from the background pipeline
+  useEffect(() => {
+    const handleStorage = () => reload();
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const handleRetryAnalysis = async () => {
+    if (!source || retrying) return;
+    const online = await checkApiHealth();
+    if (!online) {
+      alert("Satellite API is offline. Start it with:\nuvicorn api:app --host 0.0.0.0 --port 8000 --reload");
+      return;
+    }
+    setRetrying(true);
+    markWaterSourcePending(source.id);
+    reload();
+    analyzeWater(source.latitude, source.longitude)
+      .then((data) => {
+        enrichWaterSourceWithSatellite(source.id, data);
+        reload();
+      })
+      .catch(() => {
+        markWaterSourceSatelliteStatus(source.id, "error");
+        reload();
+      })
+      .finally(() => setRetrying(false));
+  };
 
   if (!source) {
     return (
@@ -63,9 +101,16 @@ export default function WaterSourceDetailsPage() {
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
                 <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{source.label}</h1>
-                <div className="inline-flex w-fit rounded-full px-4 py-1 text-sm font-bold text-white shadow-sm" style={{ backgroundColor: badgeColor }}>
-                  {getDisturbanceLabel(source)}
-                </div>
+                {source.pending ? (
+                  <div className="inline-flex w-fit items-center gap-2 rounded-full bg-slate-100 dark:bg-slate-700 px-4 py-1 text-sm font-bold text-slate-500 dark:text-slate-300">
+                    <div className="h-3 w-3 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
+                    Analyzing…
+                  </div>
+                ) : (
+                  <div className="inline-flex w-fit rounded-full px-4 py-1 text-sm font-bold text-white shadow-sm" style={{ backgroundColor: badgeColor }}>
+                    {getDisturbanceLabel(source)}
+                  </div>
+                )}
               </div>
               <div className="flex flex-wrap gap-4 text-slate-500 dark:text-slate-400">
                 <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/50 px-3 py-1 rounded-full text-xs font-mono border border-slate-100 dark:border-slate-700">
@@ -157,10 +202,87 @@ export default function WaterSourceDetailsPage() {
             </div>
 
             <div className="space-y-8">
+              {/* Satellite Metrics Card */}
+              {source.pending ? (
+                <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
+                  <h2 className="text-xl font-bold flex items-center gap-2 mb-6 text-slate-800 dark:text-slate-100">
+                    <Satellite className="h-5 w-5 text-[#0277bd]" />
+                    Satellite Metrics
+                  </h2>
+                  <div className="flex flex-col items-center gap-3 py-6">
+                    <div className="h-8 w-8 rounded-full border-4 border-blue-400 border-t-transparent animate-spin" />
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Satellite analysis in progress…</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">This takes 60–120 seconds</p>
+                  </div>
+                </section>
+              ) : source.satelliteData ? (
+                <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100">
+                      <Satellite className="h-5 w-5 text-[#0277bd]" />
+                      Satellite Metrics
+                    </h2>
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded">Live Data</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: "NDWI", value: source.satelliteData.ndwi?.toFixed(4) ?? "N/A", hint: "Water index" },
+                      { label: "NDCI", value: source.satelliteData.ndci?.toFixed(4) ?? "N/A", hint: "Chlorophyll" },
+                      { label: "Turbidity", value: source.satelliteData.turbidity?.toFixed(4) ?? "N/A", hint: "Water clarity" },
+                      { label: "Sed. Load", value: source.satelliteData.suspendent_sediment?.toFixed(4) ?? "N/A", hint: "Suspended sediment" },
+                    ].map(({ label, value, hint }) => (
+                      <div key={label} className="flex flex-col gap-0.5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</span>
+                        <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono">{value}</span>
+                        <span className="text-[10px] text-slate-400">{hint}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Water Detected</span>
+                    <span className={`text-sm font-bold ${source.satelliteData.water_detected ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`}>
+                      {source.satelliteData.water_detected ? "✅ Yes" : "❌ No"}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Pollution Status</span>
+                    <span className={`text-sm font-bold ${
+                      source.satelliteData.pollution_status === "HIGH" ? "text-red-500" :
+                      source.satelliteData.pollution_status === "MEDIUM" ? "text-amber-500" : "text-emerald-600"
+                    }`}>{source.satelliteData.pollution_status}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-3 text-right">
+                    Analyzed: {new Date(source.satelliteData.timestamp).toLocaleString()}
+                  </p>
+                </section>
+              ) : (
+                <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
+                  <h2 className="text-xl font-bold flex items-center gap-2 mb-4 text-slate-800 dark:text-slate-100">
+                    <Satellite className="h-5 w-5 text-slate-400" />
+                    Satellite Metrics
+                  </h2>
+                  <div className="flex flex-col items-center gap-4 py-4 text-center">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      {source.satelliteStatus === "error"
+                        ? "Satellite analysis failed."
+                        : "No satellite data — this point was added while the API was offline."}
+                    </p>
+                    <button
+                      onClick={handleRetryAnalysis}
+                      disabled={retrying}
+                      className="flex items-center gap-2 rounded-xl bg-[#0277bd] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#01579b] transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${retrying ? "animate-spin" : ""}`} />
+                      {retrying ? "Analyzing…" : "Run Satellite Analysis"}
+                    </button>
+                  </div>
+                </section>
+              )}
+
               {/* Forecast Section */}
               <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
                 <h2 className="text-xl font-bold flex items-center gap-2 mb-6 text-slate-800 dark:text-slate-100">
-                  <Calendar className="h-5 w-5 text-[#0277bd]" />
+                  <TrendingUp className="h-5 w-5 text-[#0277bd]" />
                   3-Day Forecast
                 </h2>
                 <div className="space-y-4">
