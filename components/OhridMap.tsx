@@ -11,7 +11,8 @@ import {
     disturbanceDescriptions,
     regions,
     type Region,
-    type WaterSource
+    type WaterSource,
+    getDisturbanceLabel
 } from "@/lib/waterData";
 
 // ── Geo circle drawn as a MapLibre layer (scales with zoom) ───
@@ -135,17 +136,10 @@ function SearchPage({ onSearch }: { onSearch: (region: Region, name: string) => 
     };
 
     return (
-        <div style={{
-            width: "100%", height: "100%", display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center", background: "#f0f4f8",
-        }}>
-            <div style={{
-                background: "white", borderRadius: 16, padding: "40px 48px",
-                boxShadow: "0 4px 24px rgba(0,0,0,0.10)", display: "flex",
-                flexDirection: "column", alignItems: "center", gap: 20, minWidth: 360,
-            }}>
-                <div style={{ fontSize: 28, fontWeight: 600, color: "#1a1a2e" }}>💧 Water Monitor</div>
-                <div style={{ fontSize: 14, color: "#666", textAlign: "center" }}>
+        <div className="flex h-full w-full flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 transition-colors">
+            <div className="flex min-w-[360px] flex-col items-center gap-5 rounded-2xl bg-white dark:bg-slate-800 p-10 shadow-xl ring-1 ring-slate-900/5 dark:ring-white/10 transition-colors">
+                <div className="text-3xl font-semibold text-slate-900 dark:text-white">💧 Water Monitor</div>
+                <div className="text-center text-sm text-slate-600 dark:text-slate-400">
                     Enter a Macedonian town, lake, or river to view water quality data
                 </div>
                 <input
@@ -153,22 +147,18 @@ function SearchPage({ onSearch }: { onSearch: (region: Region, name: string) => 
                     onChange={(e) => { setQuery(e.target.value); setError(""); }}
                     onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                     placeholder="e.g. Ohrid, Vardar, Skopje..."
-                    style={{ width: "100%", padding: "10px 14px", fontSize: 15, borderRadius: 8, border: "1.5px solid #ddd", outline: "none" }}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-[15px] text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
                     autoFocus
                 />
-                {error && <div style={{ fontSize: 12, color: "#dc2626", textAlign: "center" }}>{error}</div>}
-                <button onClick={handleSubmit} style={{
-                    width: "100%", padding: "10px 0", fontSize: 14, fontWeight: 600,
-                    borderRadius: 8, border: "none", background: "#0277bd", color: "white", cursor: "pointer",
-                }}>
+                {error && <div className="text-center text-xs text-red-600 dark:text-red-400">{error}</div>}
+                <button onClick={handleSubmit} className="w-full cursor-pointer rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500">
                     View Water Data →
                 </button>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+                <div className="flex flex-wrap justify-center gap-2">
                     {suggestions.map((s) => (
-                        <button key={s} onClick={() => { setQuery(s); setError(""); }} style={{
-                            fontSize: 12, padding: "4px 10px", borderRadius: 20,
-                            border: "1px solid #ddd", background: "#f5f5f5", cursor: "pointer", color: "#444",
-                        }}>{s}</button>
+                        <button key={s} onClick={() => { setQuery(s); setError(""); }} className="cursor-pointer rounded-full border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1 text-xs text-slate-600 dark:text-slate-300 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700">
+                            {s}
+                        </button>
                     ))}
                 </div>
             </div>
@@ -182,7 +172,7 @@ function MapPage({ region, regionName, onBack }: { region: Region; regionName: s
     const waterSources = region.waterSources;
 
     return (
-        <div style={{ position: "relative", width: "100%", height: "100%" }}>
+        <div className="relative h-full w-full">
             <Map ref={mapRef} center={region.center} zoom={region.zoom}>
                 {waterSources.map((source) => (
                     <GeoCircle key={`circle-${source.id}`} source={source} />
@@ -193,53 +183,42 @@ function MapPage({ region, regionName, onBack }: { region: Region; regionName: s
             </Map>
 
             {/* Back button */}
-            <button onClick={onBack} style={{
-                position: "absolute", top: 16, left: 16, zIndex: 10,
-                fontSize: 13, padding: "8px 14px", borderRadius: 8,
-                background: "rgba(255,255,255,0.95)", border: "1px solid #ddd",
-                cursor: "pointer", color: "#333", boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-            }}>← Back</button>
+            <button onClick={onBack} className="absolute left-4 top-4 z-10 cursor-pointer rounded-lg border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-800/95 px-4 py-2 text-[13px] text-slate-700 dark:text-slate-300 shadow-sm backdrop-blur transition-colors hover:bg-slate-50 dark:hover:bg-slate-800">
+                ← Back
+            </button>
 
             {/* Region title */}
-            <div style={{
-                position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)",
-                zIndex: 10, background: "rgba(255,255,255,0.95)", borderRadius: 10,
-                padding: "8px 18px", fontSize: 14, fontWeight: 600, color: "#1a1a2e",
-                boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-            }}>{regionName}</div>
+            <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-lg bg-white/95 dark:bg-slate-800/95 px-5 py-2 text-sm font-semibold text-slate-900 dark:text-white shadow-sm backdrop-blur transition-colors">
+                {regionName}
+            </div>
 
             {/* Info panel */}
-            <div style={{
-                position: "absolute", top: 16, right: 16, zIndex: 10,
-                background: "rgba(255,255,255,0.95)", borderRadius: 12,
-                padding: "14px 16px", display: "flex", flexDirection: "column",
-                gap: 10, minWidth: 260, maxWidth: 300, boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-            }}>
-                <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#666" }}>
-                    Water Sources
+            <div className="absolute right-4 top-4 z-10 flex min-w-[260px] max-w-[300px] flex-col gap-2.5 rounded-xl bg-white/95 dark:bg-slate-800/95 px-4 py-3.5 shadow-md backdrop-blur transition-colors">
+                <div className="mb-0.5 flex items-center justify-between border-b border-slate-100 dark:border-slate-700/50 pb-2.5">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                        Water Sources
+                    </div>
+                    <div className="rounded-md bg-sky-50 dark:bg-sky-900/30 px-2 py-1 text-[11px] font-bold text-sky-700 dark:text-sky-400">
+                        Last Updated: 13:00
+                    </div>
                 </div>
                 {waterSources.map((source) => {
                     const color = getDisturbanceColor(source.disturbancePercentage);
                     return (
-                        <div key={source.id} style={{
-                            display: "flex", flexDirection: "column", gap: 6,
-                            paddingBottom: 10, borderBottom: "1px solid #eee",
-                        }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a2e" }}>{source.label}</div>
-                            <div style={{ fontSize: 13, fontWeight: 700, color }}>{source.disturbancePercentage}% Disturbance</div>
+                        <div key={source.id} className="flex flex-col gap-1.5 border-b border-slate-100 dark:border-slate-700/50 pb-2.5">
+                            <div className="text-xs font-semibold text-slate-900 dark:text-white">{source.label}</div>
+                            <div className="text-[13px] font-bold" style={{ color }}>{getDisturbanceLabel(source.disturbancePercentage)}</div>
                             {source.disturbances.length > 0 && (
-                                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 2 }}>
+                                <div className="mt-0.5 flex flex-col gap-1.5">
                                     {source.disturbances.map((d) => (
-                                        <div key={d.id} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 11, color: "#555" }}>
-                                            <div style={{
+                                        <div key={d.id} className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-400">
+                                            <div className="mt-[3px] shrink-0" style={{
                                                 width: 0, height: 0,
                                                 borderLeft: "5px solid transparent",
                                                 borderRight: "5px solid transparent",
                                                 borderTop: `9px solid ${disturbanceColors[d.type]}`,
-                                                flexShrink: 0,
-                                                marginTop: 3,
                                             }} />
-                                            <span style={{ lineHeight: 1.4 }}>{disturbanceDescriptions[d.type]}</span>
+                                            <span className="leading-relaxed">{disturbanceDescriptions[d.type]}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -250,37 +229,41 @@ function MapPage({ region, regionName, onBack }: { region: Region; regionName: s
             </div>
 
             {/* Legend */}
-            <div style={{
-                position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)",
-                zIndex: 10, background: "rgba(255,255,255,0.95)", borderRadius: 12,
-                padding: "12px 16px", display: "flex", gap: 24, alignItems: "flex-start",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-            }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#666" }}>Disturbance Intensity</div>
-                    <div style={{
-                        height: 12, width: 180, borderRadius: 4,
-                        background: "linear-gradient(to right, #22c55e, #eab308, #f97316, #ef4444)",
-                    }} />
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#888", width: 180 }}>
-                        <span>0% (Healthy)</span><span>100% (Critical)</span>
-                    </div>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#666" }}>Disturbances</div>
-                    {Object.entries(disturbanceLabels).map(([type, label]) => (
-                        <div key={type} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: "#333", maxWidth: 220 }}>
-                            <div style={{
-                                width: 0, height: 0,
-                                borderLeft: "7px solid transparent",
-                                borderRight: "7px solid transparent",
-                                borderTop: `13px solid ${disturbanceColors[type]}`,
-                                flexShrink: 0,
-                                marginTop: 3,
-                            }} />
-                            <span style={{ lineHeight: 1.4 }}>{label}</span>
+            <div className="absolute bottom-4 left-1/2 z-10 flex min-w-[380px] -translate-x-1/2 flex-col rounded-xl bg-white/95 dark:bg-slate-800/95 px-4 py-3 shadow-md backdrop-blur transition-colors">
+                <div className="flex w-full gap-8 pb-1">
+                    <div className="flex flex-1 flex-col gap-2">
+                        <div className="mb-1 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Disturbance Intensity</div>
+                        <div className="flex h-4 items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
+                            <div className="h-3 w-3 shrink-0 rounded-full bg-[#22c55e]" />
+                            <span>0% – Healthy</span>
                         </div>
-                    ))}
+                        <div className="flex h-4 items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
+                            <div className="h-3 w-3 shrink-0 rounded-full bg-[#eab308]" />
+                            <span>45% – Moderate</span>
+                        </div>
+                        <div className="flex h-4 items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
+                            <div className="h-3 w-3 shrink-0 rounded-full bg-[#f97316]" />
+                            <span>75% – Severe</span>
+                        </div>
+                        <div className="flex h-4 items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
+                            <div className="h-3 w-3 shrink-0 rounded-full bg-[#ef4444]" />
+                            <span>100% – Critical</span>
+                        </div>
+                    </div>
+                    <div className="flex flex-1 flex-col gap-2">
+                        <div className="mb-1 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Disturbances</div>
+                        {Object.entries(disturbanceLabels).map(([type, label]) => (
+                            <div key={type} className="flex h-4 items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
+                                <div className="shrink-0" style={{
+                                    width: 0, height: 0,
+                                    borderLeft: "6px solid transparent",
+                                    borderRight: "6px solid transparent",
+                                    borderTop: `11px solid ${disturbanceColors[type]}`,
+                                }} />
+                                <span>{label}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>

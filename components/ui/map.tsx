@@ -54,9 +54,7 @@ function useResolvedTheme(themeProp?: "light" | "dark"): Theme {
     // Watch for document class changes (e.g., next-themes toggling dark class)
     const observer = new MutationObserver(() => {
       const docTheme = getDocumentTheme();
-      if (docTheme) {
-        setDetectedTheme(docTheme);
-      }
+      setDetectedTheme(docTheme ?? "light");
     });
     observer.observe(document.documentElement, {
       attributes: true,
@@ -224,9 +222,7 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
       container: containerRef.current,
       style: initialStyle,
       renderWorldCopies: false,
-      attributionControl: {
-        compact: true,
-      },
+      attributionControl: false,
       ...props,
       ...viewport,
     });
