@@ -12,7 +12,8 @@ import {
     regions,
     type Region,
     type WaterSource,
-    getDisturbanceLabel
+    getDisturbanceLabel,
+    getRegions
 } from "@/lib/waterData";
 
 // ── Geo circle drawn as a MapLibre layer (scales with zoom) ───
@@ -126,19 +127,20 @@ function GeoCircleOverlay({ source }: { source: WaterSource }) {
 function SearchPage({ onSearch }: { onSearch: (region: Region, name: string) => void }) {
     const [query, setQuery] = useState("");
     const [error, setError] = useState("");
-    const suggestions = ["Ohrid", "Prespa", "Dojran", "Skopje", "Vardar", "Bitola", "Strumica"];
+    const suggestions = ["Ohrid", "Prespa", "Dojran", "Skopje", "Vardar", "Bitola", "Strumica", "Custom"];
 
     const handleSubmit = () => {
         const key = query.trim().toLowerCase();
-        const region = regions[key];
+        const allRegions = getRegions();
+        const region = allRegions[key];
         if (region) { setError(""); onSearch(region, query.trim()); }
         else setError(`No data found for "${query}". Try: ${suggestions.join(", ")}`);
     };
 
     return (
         <div className="flex h-full w-full flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 transition-colors">
-            <div className="flex min-w-[360px] flex-col items-center gap-5 rounded-2xl bg-white dark:bg-slate-800 p-10 shadow-xl ring-1 ring-slate-900/5 dark:ring-white/10 transition-colors">
-                <div className="text-3xl font-semibold text-slate-900 dark:text-white">💧 Water Monitor</div>
+            <div className="flex min-w-[360px] flex-col items-center gap-5 rounded-2xl bg-white dark:bg-slate-800 p-10 sm:px-12 shadow-xl ring-1 ring-slate-900/5 dark:ring-slate-100/5 transition-colors">
+                <div className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">💧 Water Monitor</div>
                 <div className="text-center text-sm text-slate-600 dark:text-slate-400">
                     Enter a Macedonian town, lake, or river to view water quality data
                 </div>
@@ -147,16 +149,16 @@ function SearchPage({ onSearch }: { onSearch: (region: Region, name: string) => 
                     onChange={(e) => { setQuery(e.target.value); setError(""); }}
                     onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                     placeholder="e.g. Ohrid, Vardar, Skopje..."
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-2.5 text-[15px] text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                    className="w-full rounded-md border-0 py-2.5 px-3.5 text-slate-900 dark:text-slate-100 dark:bg-slate-700 ring-1 ring-inset ring-slate-300 dark:ring-slate-600 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-[#0277bd] sm:text-sm outline-none transition-colors"
                     autoFocus
                 />
-                {error && <div className="text-center text-xs text-red-600 dark:text-red-400">{error}</div>}
-                <button onClick={handleSubmit} className="w-full cursor-pointer rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-500">
+                {error && <div className="text-center text-xs font-medium text-red-600 dark:text-red-400">{error}</div>}
+                <button onClick={handleSubmit} className="w-full rounded-md bg-[#0277bd] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#01579b]">
                     View Water Data →
                 </button>
-                <div className="flex flex-wrap justify-center gap-2">
+                <div className="flex flex-wrap justify-center gap-2 mt-2">
                     {suggestions.map((s) => (
-                        <button key={s} onClick={() => { setQuery(s); setError(""); }} className="cursor-pointer rounded-full border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-1 text-xs text-slate-600 dark:text-slate-300 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700">
+                        <button key={s} onClick={() => { setQuery(s); setError(""); }} className="rounded-full border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-3 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 transition-colors hover:bg-slate-100 dark:hover:bg-slate-600">
                             {s}
                         </button>
                     ))}
@@ -183,42 +185,39 @@ function MapPage({ region, regionName, onBack }: { region: Region; regionName: s
             </Map>
 
             {/* Back button */}
-            <button onClick={onBack} className="absolute left-4 top-4 z-10 cursor-pointer rounded-lg border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-800/95 px-4 py-2 text-[13px] text-slate-700 dark:text-slate-300 shadow-sm backdrop-blur transition-colors hover:bg-slate-50 dark:hover:bg-slate-800">
+            <button onClick={onBack} className="absolute left-4 top-4 z-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 px-3.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 shadow-sm backdrop-blur transition-colors hover:bg-slate-50 dark:hover:bg-slate-700">
                 ← Back
             </button>
 
             {/* Region title */}
-            <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-lg bg-white/95 dark:bg-slate-800/95 px-5 py-2 text-sm font-semibold text-slate-900 dark:text-white shadow-sm backdrop-blur transition-colors">
+            <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-lg bg-white/95 dark:bg-slate-800/95 px-5 py-2 text-sm font-semibold text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur border border-slate-200 dark:border-slate-700 transition-colors">
                 {regionName}
             </div>
 
             {/* Info panel */}
-            <div className="absolute right-4 top-4 z-10 flex min-w-[260px] max-w-[300px] flex-col gap-2.5 rounded-xl bg-white/95 dark:bg-slate-800/95 px-4 py-3.5 shadow-md backdrop-blur transition-colors">
-                <div className="mb-0.5 flex items-center justify-between border-b border-slate-100 dark:border-slate-700/50 pb-2.5">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                        Water Sources
-                    </div>
-                    <div className="rounded-md bg-sky-50 dark:bg-sky-900/30 px-2 py-1 text-[11px] font-bold text-sky-700 dark:text-sky-400">
-                        Last Updated: 13:00
-                    </div>
+            <div className="absolute right-4 top-4 z-10 flex min-w-[260px] max-w-[300px] flex-col gap-3 rounded-xl bg-white/95 dark:bg-slate-800/95 p-4 shadow-md backdrop-blur border border-slate-200 dark:border-slate-700 transition-colors">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Water Sources
                 </div>
                 {waterSources.map((source) => {
                     const color = getDisturbanceColor(source.disturbancePercentage);
                     return (
-                        <div key={source.id} className="flex flex-col gap-1.5 border-b border-slate-100 dark:border-slate-700/50 pb-2.5">
-                            <div className="text-xs font-semibold text-slate-900 dark:text-white">{source.label}</div>
-                            <div className="text-[13px] font-bold" style={{ color }}>{getDisturbanceLabel(source.disturbancePercentage)}</div>
+                        <div key={source.id} className="flex flex-col gap-1.5 border-b border-slate-100 dark:border-slate-700 pb-2.5 last:border-0 last:pb-0">
+                            <div className="text-xs font-semibold text-slate-900 dark:text-slate-100">{source.label}</div>
+                            <div className="text-sm font-bold" style={{ color }}>{source.disturbancePercentage}% Disturbance</div>
                             {source.disturbances.length > 0 && (
                                 <div className="mt-0.5 flex flex-col gap-1.5">
                                     {source.disturbances.map((d) => (
                                         <div key={d.id} className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-400">
-                                            <div className="mt-[3px] shrink-0" style={{
+                                            <div style={{
                                                 width: 0, height: 0,
                                                 borderLeft: "5px solid transparent",
                                                 borderRight: "5px solid transparent",
                                                 borderTop: `9px solid ${disturbanceColors[d.type]}`,
+                                                flexShrink: 0,
+                                                marginTop: 3,
                                             }} />
-                                            <span className="leading-relaxed">{disturbanceDescriptions[d.type]}</span>
+                                            <span className="leading-snug">{disturbanceDescriptions[d.type]}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -229,41 +228,29 @@ function MapPage({ region, regionName, onBack }: { region: Region; regionName: s
             </div>
 
             {/* Legend */}
-            <div className="absolute bottom-4 left-1/2 z-10 flex min-w-[380px] -translate-x-1/2 flex-col rounded-xl bg-white/95 dark:bg-slate-800/95 px-4 py-3 shadow-md backdrop-blur transition-colors">
-                <div className="flex w-full gap-8 pb-1">
-                    <div className="flex flex-1 flex-col gap-2">
-                        <div className="mb-1 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Disturbance Intensity</div>
-                        <div className="flex h-4 items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
-                            <div className="h-3 w-3 shrink-0 rounded-full bg-[#22c55e]" />
-                            <span>0% – Healthy</span>
-                        </div>
-                        <div className="flex h-4 items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
-                            <div className="h-3 w-3 shrink-0 rounded-full bg-[#eab308]" />
-                            <span>45% – Moderate</span>
-                        </div>
-                        <div className="flex h-4 items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
-                            <div className="h-3 w-3 shrink-0 rounded-full bg-[#f97316]" />
-                            <span>75% – Severe</span>
-                        </div>
-                        <div className="flex h-4 items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
-                            <div className="h-3 w-3 shrink-0 rounded-full bg-[#ef4444]" />
-                            <span>100% – Critical</span>
-                        </div>
+            <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-start gap-6 rounded-xl bg-white/95 dark:bg-slate-800/95 px-4 py-3 shadow-md backdrop-blur border border-slate-200 dark:border-slate-700 transition-colors">
+                <div className="flex flex-col gap-1">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Disturbance Intensity</div>
+                    <div className="h-3 w-44 rounded" style={{ background: "linear-gradient(to right, #22c55e, #eab308, #f97316, #ef4444)" }} />
+                    <div className="flex w-44 justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                        <span>0% (Healthy)</span><span>100% (Critical)</span>
                     </div>
-                    <div className="flex flex-1 flex-col gap-2">
-                        <div className="mb-1 whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Disturbances</div>
-                        {Object.entries(disturbanceLabels).map(([type, label]) => (
-                            <div key={type} className="flex h-4 items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
-                                <div className="shrink-0" style={{
-                                    width: 0, height: 0,
-                                    borderLeft: "6px solid transparent",
-                                    borderRight: "6px solid transparent",
-                                    borderTop: `11px solid ${disturbanceColors[type]}`,
-                                }} />
-                                <span>{label}</span>
-                            </div>
-                        ))}
-                    </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Disturbances</div>
+                    {Object.entries(disturbanceLabels).map(([type, label]) => (
+                        <div key={type} className="flex max-w-[220px] items-start gap-2 text-xs text-slate-700 dark:text-slate-300">
+                            <div style={{
+                                width: 0, height: 0,
+                                borderLeft: "7px solid transparent",
+                                borderRight: "7px solid transparent",
+                                borderTop: `13px solid ${disturbanceColors[type]}`,
+                                flexShrink: 0,
+                                marginTop: 3,
+                            }} />
+                            <span className="leading-snug">{label}</span>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>

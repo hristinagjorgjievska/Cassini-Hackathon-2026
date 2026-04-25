@@ -60,7 +60,7 @@ export type Disturbance = { id: number; type: string; };
 export type WaterSource  = { id: number; longitude: number; latitude: number; disturbancePercentage: number; label: string; disturbances: Disturbance[]; };
 export type Region = { center: [number, number]; zoom: number; waterSources: WaterSource[]; };
 
-export const regions: Record<string, Region> = {
+export const defaultRegions: Record<string, Region> = {
     "ohrid": {
         center: [20.802, 41.068], zoom: 11,
         waterSources: [{
@@ -75,7 +75,7 @@ export const regions: Record<string, Region> = {
     "ohridsko ezero": {
         center: [20.802, 41.068], zoom: 11,
         waterSources: [{
-            id: 1, longitude: 20.802, latitude: 41.068, disturbancePercentage: 50, label: "Ohrid Lake",
+            id: 2, longitude: 20.802, latitude: 41.068, disturbancePercentage: 50, label: "Ohrid Lake",
             disturbances: [
                 { id: 1, type: "algae" },
                 { id: 2, type: "turbidity" },
@@ -85,7 +85,7 @@ export const regions: Record<string, Region> = {
     "prespa": {
         center: [21.020, 40.900], zoom: 11,
         waterSources: [{
-            id: 1, longitude: 21.020, latitude: 40.900, disturbancePercentage: 55, label: "Prespa Lake",
+            id: 3, longitude: 21.020, latitude: 40.900, disturbancePercentage: 55, label: "Prespa Lake",
             disturbances: [
                 { id: 1, type: "pollution" },
                 { id: 2, type: "algae" },
@@ -95,7 +95,7 @@ export const regions: Record<string, Region> = {
     "dojran": {
         center: [22.690, 41.210], zoom: 12,
         waterSources: [{
-            id: 1, longitude: 22.690, latitude: 41.210, disturbancePercentage: 80, label: "Dojran Lake",
+            id: 4, longitude: 22.690, latitude: 41.210, disturbancePercentage: 80, label: "Dojran Lake",
             disturbances: [
                 { id: 1, type: "temperature" },
                 { id: 2, type: "pollution" },
@@ -106,7 +106,7 @@ export const regions: Record<string, Region> = {
     "skopje": {
         center: [21.432, 42.002], zoom: 12,
         waterSources: [{
-            id: 1, longitude: 21.432, latitude: 42.002, disturbancePercentage: 85, label: "Vardar River – Skopje",
+            id: 5, longitude: 21.432, latitude: 42.002, disturbancePercentage: 85, label: "Vardar River – Skopje",
             disturbances: [
                 { id: 1, type: "pollution" },
                 { id: 2, type: "turbidity" },
@@ -118,14 +118,14 @@ export const regions: Record<string, Region> = {
         center: [21.700, 41.600], zoom: 9,
         waterSources: [
             {
-                id: 1, longitude: 21.432, latitude: 42.002, disturbancePercentage: 65, label: "Vardar – Skopje",
+                id: 6, longitude: 21.432, latitude: 42.002, disturbancePercentage: 65, label: "Vardar – Skopje",
                 disturbances: [
                     { id: 1, type: "pollution" },
                     { id: 2, type: "turbidity" },
                 ],
             },
             {
-                id: 2, longitude: 21.900, latitude: 41.450, disturbancePercentage: 45, label: "Vardar – Veles",
+                id: 7, longitude: 21.900, latitude: 41.450, disturbancePercentage: 45, label: "Vardar – Veles",
                 disturbances: [
                     { id: 3, type: "algae" },
                     { id: 4, type: "temperature" },
@@ -136,7 +136,7 @@ export const regions: Record<string, Region> = {
     "bitola": {
         center: [21.340, 41.031], zoom: 12,
         waterSources: [{
-            id: 1, longitude: 21.340, latitude: 41.031, disturbancePercentage: 40, label: "Dragor River – Bitola",
+            id: 8, longitude: 21.340, latitude: 41.031, disturbancePercentage: 40, label: "Dragor River – Bitola",
             disturbances: [
                 { id: 1, type: "pollution" },
                 { id: 2, type: "algae" },
@@ -146,7 +146,7 @@ export const regions: Record<string, Region> = {
     "strumica": {
         center: [22.643, 41.438], zoom: 12,
         waterSources: [{
-            id: 1, longitude: 22.643, latitude: 41.438, disturbancePercentage: 35, label: "Strumica River",
+            id: 9, longitude: 22.643, latitude: 41.438, disturbancePercentage: 35, label: "Strumica River",
             disturbances: [
                 { id: 1, type: "turbidity" },
                 { id: 2, type: "temperature" },
@@ -154,3 +154,51 @@ export const regions: Record<string, Region> = {
         }],
     },
 };
+
+export const regions: Record<string, Region> = defaultRegions; // Kept for backwards compatibility if needed
+
+export function getRegions(): Record<string, Region> {
+    if (typeof window === "undefined") return defaultRegions;
+    
+    const stored = localStorage.getItem("custom_water_sources");
+    if (!stored) return defaultRegions;
+    
+    try {
+        const customSources: WaterSource[] = JSON.parse(stored);
+        if (customSources.length === 0) return defaultRegions;
+        
+        // Calculate center based on the first custom source, or default to center of MK
+        const centerLng = customSources[0].longitude;
+        const centerLat = customSources[0].latitude;
+        
+        return {
+            ...defaultRegions,
+            "custom": {
+                center: [centerLng, centerLat],
+                zoom: 8,
+                waterSources: customSources
+            }
+        };
+    } catch (e) {
+        return defaultRegions;
+    }
+}
+
+export function addCustomWaterSource(label: string, longitude: number, latitude: number, disturbancePercentage: number) {
+    if (typeof window === "undefined") return;
+    
+    const stored = localStorage.getItem("custom_water_sources");
+    const customSources: WaterSource[] = stored ? JSON.parse(stored) : [];
+    
+    const newSource: WaterSource = {
+        id: Date.now(), // Generate unique ID
+        longitude,
+        latitude,
+        disturbancePercentage,
+        label,
+        disturbances: [] // Custom sources start without specific disturbances for now, or we could add them
+    };
+    
+    customSources.push(newSource);
+    localStorage.setItem("custom_water_sources", JSON.stringify(customSources));
+}
