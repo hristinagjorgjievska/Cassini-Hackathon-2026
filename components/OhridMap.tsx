@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Map, MapMarker, MarkerContent, useMap, type MapRef } from "@/components/ui/map";
-import maplibregl from "maplibre-gl";
 
 const phColors: [number, string][] = [
     [0, "#d32f2f"], [1, "#e64a19"], [2, "#f57c00"], [3, "#f9a825"],
@@ -37,9 +36,19 @@ const disturbanceColors: Record<string, string> = {
     algae: "#16a34a", pollution: "#7c3aed",
     turbidity: "#d97706", temperature: "#dc2626",
 };
+
 const disturbanceLabels: Record<string, string> = {
-    algae: "Algae bloom", pollution: "Pollution",
-    turbidity: "High turbidity", temperature: "Temp anomaly",
+    algae: "Algae bloom",
+    pollution: "Pollution",
+    turbidity: "High turbidity",
+    temperature: "Temp anomaly",
+};
+
+const disturbanceDescriptions: Record<string, string> = {
+    algae: "Algae bloom – caused by excess nutrients warming the water this time of year",
+    pollution: "Pollution – likely from industrial discharge and urban runoff upstream",
+    turbidity: "High turbidity – heavy rainfall has stirred up sediment reducing water clarity",
+    temperature: "Temp anomaly – surface temperatures are above seasonal average by 2–3°C",
 };
 
 type Disturbance = { id: number; type: string; };
@@ -118,7 +127,6 @@ function GeoCircleOverlay({ source }: { source: WaterSource }) {
     const color = getPhColor(source.ph);
     return (
         <>
-            {/* Centre dot anchored exactly to the coordinate */}
             <MapMarker longitude={source.longitude} latitude={source.latitude} anchor="center">
                 <MarkerContent>
                     <div style={{
@@ -130,7 +138,6 @@ function GeoCircleOverlay({ source }: { source: WaterSource }) {
                 </MarkerContent>
             </MapMarker>
 
-            {/* Each disturbance triangle gets its own geo-anchored marker */}
             {source.disturbances.map((d, i) => {
                 const angle = (i / source.disturbances.length) * 2 * Math.PI - Math.PI / 2;
                 const radiusDeg = 0.012;
@@ -336,12 +343,12 @@ function MapPage({ region, regionName, onBack }: { region: Region; regionName: s
                 boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
             }}>{regionName}</div>
 
-            {/* Info panel — pH + disturbances only */}
+            {/* Info panel */}
             <div style={{
                 position: "absolute", top: 16, right: 16, zIndex: 10,
                 background: "rgba(255,255,255,0.95)", borderRadius: 12,
                 padding: "14px 16px", display: "flex", flexDirection: "column",
-                gap: 10, minWidth: 220, boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                gap: 10, minWidth: 260, maxWidth: 300, boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
             }}>
                 <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#666" }}>
                     Water Sources
@@ -350,23 +357,24 @@ function MapPage({ region, regionName, onBack }: { region: Region; regionName: s
                     const color = getPhColor(source.ph);
                     return (
                         <div key={source.id} style={{
-                            display: "flex", flexDirection: "column", gap: 5,
+                            display: "flex", flexDirection: "column", gap: 6,
                             paddingBottom: 10, borderBottom: "1px solid #eee",
                         }}>
                             <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a2e" }}>{source.label}</div>
                             <div style={{ fontSize: 13, fontWeight: 700, color }}>pH {source.ph.toFixed(1)}</div>
                             {source.disturbances.length > 0 && (
-                                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 2 }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 2 }}>
                                     {source.disturbances.map((d) => (
-                                        <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#555" }}>
+                                        <div key={d.id} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 11, color: "#555" }}>
                                             <div style={{
                                                 width: 0, height: 0,
                                                 borderLeft: "5px solid transparent",
                                                 borderRight: "5px solid transparent",
                                                 borderTop: `9px solid ${disturbanceColors[d.type]}`,
                                                 flexShrink: 0,
+                                                marginTop: 3,
                                             }} />
-                                            {disturbanceLabels[d.type]}
+                                            <span style={{ lineHeight: 1.4 }}>{disturbanceDescriptions[d.type]}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -396,15 +404,16 @@ function MapPage({ region, regionName, onBack }: { region: Region; regionName: s
                 <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                     <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#666" }}>Disturbances</div>
                     {Object.entries(disturbanceLabels).map(([type, label]) => (
-                        <div key={type} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#333" }}>
+                        <div key={type} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: "#333", maxWidth: 220 }}>
                             <div style={{
                                 width: 0, height: 0,
                                 borderLeft: "7px solid transparent",
                                 borderRight: "7px solid transparent",
                                 borderTop: `13px solid ${disturbanceColors[type]}`,
                                 flexShrink: 0,
+                                marginTop: 3,
                             }} />
-                            {label}
+                            <span style={{ lineHeight: 1.4 }}>{label}</span>
                         </div>
                     ))}
                 </div>
