@@ -12,13 +12,11 @@ type ThemeContextType = {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-// ── PROVIDER ─────────────────────────────────────
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // ✅ ALWAYS start light
     setTheme("dark");
     localStorage.removeItem("app_theme");
     setMounted(true);
@@ -49,14 +47,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// ── HOOK ─────────────────────────────────────────
 export function useTheme() {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
   return ctx;
 }
 
-// ── TOGGLE BUTTON ───────────────────────────────
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
 

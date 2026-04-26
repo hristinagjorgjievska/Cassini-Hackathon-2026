@@ -24,14 +24,12 @@ import {
 
 import { checkApiHealth, analyzeWater } from "@/lib/satelliteApi";
 
-// ── Geo circle drawn as a MapLibre layer (scales with zoom) ───────────────────
 function GeoCircle({ source }: { source: WaterSource }) {
     const { map, isLoaded } = useMap();
     const sourceId = `geo-circle-src-${source.id}`;
     const fillId = `geo-circle-fill-${source.id}`;
     const strokeId = `geo-circle-stroke-${source.id}`;
 
-    // Pending sources use a neutral grey ring so the real colour can be revealed
     const color = source.pending ? "#94a3b8" : getDisturbanceColor(source);
     const hex = colorToHex(color);
 
@@ -72,7 +70,7 @@ function GeoCircle({ source }: { source: WaterSource }) {
                 if (map.getLayer(strokeId)) map.removeLayer(strokeId);
                 if (map.getLayer(fillId)) map.removeLayer(fillId);
                 if (map.getSource(sourceId)) map.removeSource(sourceId);
-            } catch { /* ignore */ }
+            } catch {}
         };
     }, [map, isLoaded, source.id, source.longitude, source.latitude, hex,
         source.pending, fillId, strokeId, sourceId]);
@@ -80,7 +78,6 @@ function GeoCircle({ source }: { source: WaterSource }) {
     return null;
 }
 
-// ── Centre dot + popup, state-aware ─────────────────────────────────────────
 function GeoCircleOverlay({ source }: { source: WaterSource }) {
     const markerColor = source.pending ? "#94a3b8" : getDisturbanceColor(source);
 
@@ -163,7 +160,6 @@ function GeoCircleOverlay({ source }: { source: WaterSource }) {
                 </MarkerPopup>
             </MapMarker>
 
-            {/* Disturbance triangles — only shown when real satellite data is available */}
             {!source.pending && source.disturbances.map((d, i) => {
                 const angle = (i / source.disturbances.length) * 2 * Math.PI - Math.PI / 2;
                 const radiusDeg = 0.012;
@@ -186,7 +182,6 @@ function GeoCircleOverlay({ source }: { source: WaterSource }) {
     );
 }
 
-// ── Map page ─────────────────────────────────────────────────────────────────
 function MapPage({
     region,
     regionName,
@@ -231,23 +226,18 @@ function MapPage({
 
         const { lng, lat } = draftPoint;
 
-        // 1. Save to localStorage immediately — marker appears at once (pending state)
         const id = addCustomWaterSource(label, lng, lat);
 
-        // 2. Reset form + re-render map
         setDraftPoint(null);
         setLabel("");
         onAddComplete();
 
-        // 3. Verify backend is reachable right now
         const online = await checkApiHealth();
         if (!online) {
-            // API was offline at save time — mark source accordingly
             markWaterSourceSatelliteStatus(id, "unavailable");
             return;
         }
 
-        // 4. Fire satellite pipeline in the background — does not block UI
         analyzeWater(lat, lng)
             .then((data) => enrichWaterSourceWithSatellite(id, data))
             .catch((err) => {
@@ -311,7 +301,6 @@ function MapPage({
                                             <span>{draftPoint.lat.toFixed(5)}</span>
                                         </div>
                                     </div>
-                                    {/* Satellite note — replaces manual checkboxes */}
                                     <div className="flex items-start gap-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 px-2.5 py-2">
                                         <span className="text-sm">🛰</span>
                                         <p className="text-[10px] text-blue-700 dark:text-blue-300 leading-relaxed">
@@ -340,7 +329,6 @@ function MapPage({
                 )}
             </Map>
 
-            {/* ── Satellite API offline banner ─────────────────────────────── */}
             {apiOnline === false && (
                 <div className="absolute top-16 left-1/2 z-20 -translate-x-1/2 w-full max-w-2xl px-4 pointer-events-none">
                     <div className="pointer-events-auto flex items-center gap-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/95 dark:bg-amber-900/30 px-4 py-3 shadow-lg backdrop-blur">
@@ -363,7 +351,6 @@ function MapPage({
                 </div>
             )}
 
-            {/* ── Add a Dot button ─────────────────────────────────────────── */}
             <button
                 onClick={() => {
                     const rawRole = user?.role || "free";
@@ -385,14 +372,12 @@ function MapPage({
                 {isPlacementMode ? "Click Map to Place" : "Add a Dot"}
             </button>
 
-            {/* ── Info panel ───────────────────────────────────────────────── */}
             <div className="absolute right-4 top-4 z-10 flex min-w-[280px] max-w-[320px] flex-col gap-3 rounded-xl bg-white/95 dark:bg-slate-800/95 p-5 shadow-md backdrop-blur border border-slate-200 dark:border-slate-700 transition-colors">
                 <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3 mb-1">
                     <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         Water Sources
                     </div>
                     <div className="flex items-center gap-2">
-                        {/* Satellite API status indicator */}
                         <div className="flex items-center gap-1.5">
                             {apiOnline === true && <span className="h-2 w-2 rounded-full bg-emerald-500" />}
                             {apiOnline === false && <span className="h-2 w-2 rounded-full bg-red-500" />}
@@ -413,7 +398,6 @@ function MapPage({
                         {waterSources.map((source) => {
                             const color = source.pending ? "#94a3b8" : getDisturbanceColor(source);
                             const disturbanceCount = source.disturbances?.length || 0;
-                            // Calculate percentage based on the disturbance classification scale used in the legend
                             let percentage = "0%";
                             if (disturbanceCount >= 4) percentage = "100%";
                             else if (disturbanceCount >= 3) percentage = "75%";
@@ -439,7 +423,6 @@ function MapPage({
                 )}
             </div>
 
-            {/* ── Legend ───────────────────────────────────────────────────── */}
             <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-start gap-6 rounded-xl bg-white/95 dark:bg-slate-800/95 px-5 py-4 shadow-md backdrop-blur border border-slate-200 dark:border-slate-700 transition-colors">
                 <div className="flex flex-col gap-2">
                     <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Disturbance Intensity</div>
@@ -480,20 +463,17 @@ function MapPage({
     );
 }
 
-// ── Root ──────────────────────────────────────────────────────────────────────
 export function OhridMap() {
     const [region, setRegion] = useState<Region | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
     const [apiOnline, setApiOnline] = useState<boolean | null>(null);
 
-    // Health check on mount, then every 30 seconds
     useEffect(() => {
         checkApiHealth().then(setApiOnline);
         const interval = setInterval(() => checkApiHealth().then(setApiOnline), 30_000);
         return () => clearInterval(interval);
     }, []);
 
-    // Re-render when satellite enrichment fires the storage event
     useEffect(() => {
         const handleStorage = () => setRefreshKey((k) => k + 1);
         window.addEventListener("storage", handleStorage);

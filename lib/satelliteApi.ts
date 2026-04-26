@@ -1,18 +1,7 @@
-/**
- * satelliteApi.ts
- * ---------------
- * Owns all communication with the Python FastAPI backend on localhost:8000.
- * All fetch() calls to the satellite pipeline live here.
- */
-
 import type { SatelliteData } from "./waterData";
 
 const API_BASE = "http://localhost:8000";
 
-/**
- * Pings the health endpoint with a 2-second timeout.
- * Returns true if the Python backend is running, false otherwise.
- */
 export async function checkApiHealth(): Promise<boolean> {
     try {
         const controller = new AbortController();
@@ -27,10 +16,6 @@ export async function checkApiHealth(): Promise<boolean> {
     }
 }
 
-/**
- * POST /analyze-water — triggers the Sentinel-2 satellite pipeline.
- * Takes 60–120 seconds to resolve. Throws on network error or non-200 status.
- */
 export async function analyzeWater(
     lat: number,
     lon: number

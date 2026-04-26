@@ -21,12 +21,10 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// A simple mock DB stored in localStorage to persist users
 const getMockUsers = () => {
   if (typeof window === "undefined") return [];
   const stored = localStorage.getItem("mock_users");
   if (stored) return JSON.parse(stored);
-  // Default demo user
   const defaultUsers = [{ id: "demo-1", name: "Trajche", email: "trajche@example.com", pass: "password", role: "free" }];
   localStorage.setItem("mock_users", JSON.stringify(defaultUsers));
   return defaultUsers;
@@ -38,7 +36,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is logged in
     const storedUserId = localStorage.getItem("current_user_id");
     if (storedUserId) {
       const users = getMockUsers();
@@ -80,11 +77,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateRole = async (newRole: string) => {
     if (!user) return;
     
-    // Update local state
     const updatedUser = { ...user, role: newRole };
     setUser(updatedUser);
     
-    // Update mock DB
     const users = getMockUsers();
     const userIndex = users.findIndex((u: any) => u.id === user.id);
     if (userIndex !== -1) {

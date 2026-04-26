@@ -9,7 +9,6 @@ import { useAuth } from "@/lib/AuthContext";
 export default function MyWaterPage() {
   const [waterSources, setWaterSources] = useState<WaterSource[]>([]);
   
-  // Form State
   const [label, setLabel] = useState("");
   const [longitude, setLongitude] = useState("");
   const [latitude, setLatitude] = useState("");
@@ -46,14 +45,12 @@ export default function MyWaterPage() {
       updateCustomWaterSource(editingSourceId, label, lng, lat, selectedDisturbances);
     }
     
-    // Reset form
     setLabel("");
     setLongitude("");
     setLatitude("");
     setSelectedDisturbances([]);
     setEditingSourceId(null);
     
-    // Refresh data
     loadData();
   };
 
@@ -208,7 +205,6 @@ export default function MyWaterPage() {
                     </div>
                   )}
                   
-                  {/* Action Buttons */}
                   <div className="mt-5 flex flex-col gap-2 border-t border-slate-100 dark:border-slate-700/50 pt-4">
                     <Link 
                         href={`/water-source/${source.id}`}

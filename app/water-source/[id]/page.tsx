@@ -43,7 +43,6 @@ export default function WaterSourceDetailsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Listen for satellite enrichment updates from the background pipeline
   useEffect(() => {
     const handleStorage = () => reload();
     window.addEventListener("storage", handleStorage);
@@ -135,7 +134,6 @@ export default function WaterSourceDetailsPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
-              {/* Chart Section */}
               <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100">
@@ -172,7 +170,6 @@ export default function WaterSourceDetailsPage() {
                 </div>
               </section>
 
-              {/* Active Disturbances */}
               <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
                 <h2 className="text-xl font-bold flex items-center gap-2 mb-6 text-slate-800 dark:text-slate-100">
                   <Droplets className="h-5 w-5 text-[#0277bd]" />
@@ -202,7 +199,6 @@ export default function WaterSourceDetailsPage() {
             </div>
 
             <div className="space-y-8">
-              {/* Satellite Metrics Card */}
               {source.pending ? (
                 <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
                   <h2 className="text-xl font-bold flex items-center gap-2 mb-6 text-slate-800 dark:text-slate-100">
@@ -236,7 +232,6 @@ export default function WaterSourceDetailsPage() {
                         <span className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono">{value}</span>
                         <span className="text-xs text-slate-400">{hint}</span>
                         
-                        {/* Tooltip */}
                         <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-56 -translate-x-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                           <div className="rounded-lg bg-slate-900 dark:bg-white p-3 text-xs leading-relaxed text-slate-100 dark:text-slate-800 shadow-xl text-center ring-1 ring-black/5 dark:ring-white/10">
                             {explanation}
@@ -287,7 +282,6 @@ export default function WaterSourceDetailsPage() {
                 </section>
               )}
 
-              {/* Forecast Section */}
               <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
                 <h2 className="text-xl font-bold flex items-center gap-2 mb-6 text-slate-800 dark:text-slate-100">
                   <TrendingUp className="h-5 w-5 text-[#0277bd]" />

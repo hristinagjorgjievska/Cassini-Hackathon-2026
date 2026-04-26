@@ -35,7 +35,6 @@ export default function MyProfilePage() {
   if (!roleDetailsMap[roleKey]) roleKey = "free";
   const roleDetails = roleDetailsMap[roleKey];
 
-  // ── Derived dot stats ──────────────────────────────────────────────────────
   const totalDots = dots.length;
   const analyzedDots = dots.filter((d) => d.satelliteStatus === "done").length;
   const pendingDots = dots.filter((d) => d.pending || d.satelliteStatus === "pending").length;
@@ -43,10 +42,8 @@ export default function MyProfilePage() {
   const healthyDots = dots.filter((d) => !d.pending && (d.disturbances?.length ?? 0) === 0).length;
   const disturbedDots = dots.filter((d) => !d.pending && (d.disturbances?.length ?? 0) > 0).length;
 
-  // Count total disturbances across all dots
   const totalDisturbances = dots.reduce((sum, d) => sum + (d.disturbances?.length ?? 0), 0);
 
-  // Most common disturbance type
   const disturbanceCounts: Record<string, number> = {};
   dots.forEach((d) => {
     d.disturbances?.forEach((dist) => {
@@ -55,13 +52,15 @@ export default function MyProfilePage() {
   });
   const topDisturbance = Object.entries(disturbanceCounts).sort((a, b) => b[1] - a[1])[0];
 
-  // Average NDWI across analyzed dots
-  const ndwiValues = dots
-    .map((d) => d.satelliteData?.ndwi)
-    .filter((v): v is number => v !== null && v !== undefined);
-  const avgNdwi = ndwiValues.length > 0
-    ? (ndwiValues.reduce((a, b) => a + b, 0) / ndwiValues.length).toFixed(3)
-    : null;
+  const avgDisturbances = analyzedDots > 0 ? totalDisturbances / analyzedDots : 0;
+  let waterGrade = "—";
+  if (analyzedDots > 0) {
+    if (avgDisturbances === 0) waterGrade = "A+";
+    else if (avgDisturbances < 0.5) waterGrade = "A";
+    else if (avgDisturbances < 1) waterGrade = "B";
+    else if (avgDisturbances < 2) waterGrade = "C";
+    else waterGrade = "D";
+  }
 
   const dotLimit = roleKey === "free" ? 2 : roleKey === "premium" ? 50 : "∞";
 
@@ -69,7 +68,6 @@ export default function MyProfilePage() {
     <ProtectedRoute>
       <div className="min-h-[calc(100vh-4rem)] bg-slate-50 dark:bg-slate-900 pb-16 transition-colors">
 
-        {/* ── Hero ──────────────────────────────────────────────────────────── */}
         <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-white/10 px-4 py-12 sm:px-6 lg:px-8 transition-colors">
           <div className="mx-auto max-w-5xl flex items-center gap-6">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-3xl font-bold text-white shadow-md ring-4 ring-white dark:ring-slate-700">
@@ -94,7 +92,6 @@ export default function MyProfilePage() {
 
         <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
 
-          {/* ── Quick-stat tiles ──────────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[
               {
@@ -136,10 +133,8 @@ export default function MyProfilePage() {
             ))}
           </div>
 
-          {/* ── Main grid ─────────────────────────────────────────────────── */}
           <div className="grid gap-6 md:grid-cols-3">
 
-            {/* LEFT: Subscription ─────────────────────────────────────────── */}
             <div className="md:col-span-1 space-y-6">
               <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 p-6 shadow-sm transition-colors">
                 <div className="flex items-center gap-2 mb-4">
@@ -178,10 +173,8 @@ export default function MyProfilePage() {
               </div>
             </div>
 
-            {/* RIGHT: Dot stats ─────────────────────────────────────────────── */}
             <div className="md:col-span-2 space-y-6">
 
-              {/* Satellite summary strip */}
               <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 shadow-sm overflow-hidden transition-colors">
                 <div className="border-b border-slate-100 dark:border-white/5 px-6 py-5">
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Satellite Overview</h2>
@@ -190,10 +183,10 @@ export default function MyProfilePage() {
                 <div className="grid sm:grid-cols-3 gap-px bg-slate-100 dark:bg-slate-700/50">
                   {[
                     {
-                      label: "Avg NDWI",
-                      value: avgNdwi ?? "—",
-                      icon: Waves,
-                      sub: "Water index",
+                      label: "Water Grade",
+                      value: waterGrade,
+                      icon: Activity,
+                      sub: "Overall health rating",
                     },
                     {
                       label: "Total Disturbances",
@@ -220,7 +213,6 @@ export default function MyProfilePage() {
                 </div>
               </div>
 
-              {/* Dot list */}
               <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 shadow-sm overflow-hidden transition-colors">
                 <div className="border-b border-slate-100 dark:border-white/5 px-6 py-5 flex items-center justify-between">
                   <div>
@@ -305,7 +297,6 @@ export default function MyProfilePage() {
                 )}
               </div>
 
-              {/* Analysis status breakdown */}
               {totalDots > 0 && (
                 <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 p-6 shadow-sm transition-colors">
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-5">Analysis Status</h2>

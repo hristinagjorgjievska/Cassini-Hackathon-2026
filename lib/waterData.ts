@@ -1,10 +1,10 @@
 import { sendAnalysisCompleteEmail } from "./sendEmail";
 
 export const disturbanceIntensityColors: [number, string][] = [
-    [0, "#22c55e"],   // Healthy (Green)
-    [45, "#eab308"],  // Moderate (Yellow)
-    [75, "#f97316"],  // Severe (Orange)
-    [100, "#ef4444"], // Critical (Red)
+    [0, "#22c55e"],
+    [45, "#eab308"],
+    [75, "#f97316"],
+    [100, "#ef4444"],
 ];
 
 export function interpolateColor(c1: string, c2: string, t: number) {
@@ -72,7 +72,6 @@ export const disturbanceDescriptions: Record<string, string> = {
 
 export type Disturbance = { id: number; type: string; };
 
-/** Raw response from the Python FastAPI /analyze-water endpoint */
 export type SatelliteData = {
     ndwi: number | null;
     ndci: number | null;
@@ -90,11 +89,8 @@ export type WaterSource = {
     disturbancePercentage: number;
     label: string;
     disturbances: Disturbance[];
-    /** true while satellite analysis is in flight */
     pending?: boolean;
-    /** lifecycle state of the satellite fetch */
     satelliteStatus?: "pending" | "done" | "error" | "unavailable";
-    /** raw API response stored after a successful analysis */
     satelliteData?: SatelliteData;
 };
 
@@ -197,7 +193,7 @@ export const defaultRegions: Record<string, Region> = {
     },
 };
 
-export const regions: Record<string, Region> = defaultRegions; // Kept for backwards compatibility if needed
+export const regions: Record<string, Region> = defaultRegions;
 
 export function getRegions(): Record<string, Region> {
     if (typeof window === "undefined") return defaultRegions;
@@ -209,7 +205,6 @@ export function getRegions(): Record<string, Region> {
         const customSources: WaterSource[] = JSON.parse(stored);
         if (customSources.length === 0) return defaultRegions;
 
-        // Calculate center based on the first custom source, or default to center of MK
         const centerLng = customSources[0].longitude;
         const centerLat = customSources[0].latitude;
 
@@ -226,11 +221,6 @@ export function getRegions(): Record<string, Region> {
     }
 }
 
-/**
- * Creates a new custom water source in localStorage immediately with a
- * pending satellite state. Returns the new source's id so the caller
- * can track it during the async satellite fetch.
- */
 export function addCustomWaterSource(
     label: string,
     longitude: number,
@@ -323,25 +313,16 @@ export function getMockForecast(id: number) {
     ];
 }
 
-// ── Satellite integration utilities ────────────────────────────────────────────
-
-/**
- * Infers disturbances from raw satellite data returned by the Python API.
- * This replaces the manual checkbox selection entirely.
- */
 export function mapSatelliteToDisturbances(data: SatelliteData): Disturbance[] {
     const result: Disturbance[] = [];
     let id = 1;
 
-    // Algae proxy: chlorophyll index above threshold
     if (data.ndci !== null && data.ndci > 0.05) {
         result.push({ id: id++, type: "algae" });
     }
-    // Pollution: derived directly from the pollution classification
     if (data.pollution_status === "HIGH" || data.pollution_status === "MEDIUM") {
         result.push({ id: id++, type: "pollution" });
     }
-    // Turbidity: negative turbidity signal or high suspended sediment
     const hasTurbidity =
         (data.turbidity !== null && data.turbidity < -0.05) ||
         (data.suspendent_sediment !== null && data.suspendent_sediment > 0.15);
@@ -352,17 +333,12 @@ export function mapSatelliteToDisturbances(data: SatelliteData): Disturbance[] {
     return result;
 }
 
-/** Maps pollution_status string → disturbancePercentage number for marker colouring */
 export function mapPollutionToPercentage(status: string): number {
     if (status === "HIGH") return 75;
     if (status === "MEDIUM") return 45;
     return 0;
 }
 
-/**
- * Updates a custom water source in localStorage with real satellite data.
- * Fires a storage event so any listening components re-render.
- */
 export function enrichWaterSourceWithSatellite(
     id: number,
     data: SatelliteData,
@@ -397,18 +373,12 @@ export function enrichWaterSourceWithSatellite(
 
     localStorage.setItem("custom_water_sources", JSON.stringify(customSources));
     
-    // Send an email notification that the analysis has completed
     const disturbanceNames = disturbances.map(d => disturbanceDescriptions[d.type] || d.type);
     sendAnalysisCompleteEmail("ognen.mlad@gmail.com", customSources[index].label, disturbanceNames, data.pollution_status);
 
-    // Notify OhridMap to re-render
     window.dispatchEvent(new Event("storage"));
 }
 
-/**
- * Marks a water source with a terminal satellite status (error / unavailable).
- * Also fires a storage event so the map re-renders the marker.
- */
 export function markWaterSourceSatelliteStatus(
     id: number,
     status: "error" | "unavailable",
@@ -432,9 +402,6 @@ export function markWaterSourceSatelliteStatus(
     window.dispatchEvent(new Event("storage"));
 }
 
-/**
- * Re-marks a source as pending so a retry analysis can be triggered.
- */
 export function markWaterSourcePending(id: number): void {
     if (typeof window === "undefined") return;
 

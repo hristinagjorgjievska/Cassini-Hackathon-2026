@@ -13,7 +13,6 @@ export default function BillingPage() {
     currentRole = "free";
   }
 
-  // Order of tiers by price/power
   const tierOrder = ["free", "premium", "pro"];
 
   return (
