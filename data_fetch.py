@@ -14,16 +14,28 @@ ROOT CAUSE FIX (422 error):
   2. FALLBACK:   If >80% pixels are still NaN, retry with NO SCL mask at all
                  (raw median composite). Slightly noisier but always has data.
   3. WIDER TIME: If 15-day window is empty, automatically widen to 45 days.
+
+RAINFALL (Open-Meteo / ERA5):
+  The Copernicus openEO backend has no ERA5 / climate collections available.
+  Rainfall is fetched from the Open-Meteo Historical Weather API instead,
+  which is backed by ERA5 reanalysis data and requires no API key.
+
+FORECAST:
+  5-day precipitation forecast from Open-Meteo forecast API (GFS/ECMWF blend).
+  Returned as a list of daily dicts and passed into processing.py for
+  rule-based water quality prediction.
 """
 
 import io
+import json as _json
 import logging
+import urllib.request
 from datetime import datetime, timedelta
-from typing import Tuple, Dict, Any
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-import rasterio
 import openeo
+import rasterio
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +43,9 @@ OPENEO_URL     = "https://openeo.dataspace.copernicus.eu"
 COLLECTION     = "SENTINEL2_L2A"
 REQUIRED_BANDS = ["B02", "B03", "B04", "B05", "B08"]
 BBOX_OFFSET    = 0.01   # ~1 km radius in degrees
-
-# If more than this fraction of pixels are NaN, treat as "no usable data"
-NAN_THRESHOLD = 0.80
+RAINFALL_DAYS_BACK = 5  # historical window (matches S2 revisit cycle)
+FORECAST_DAYS      = 5  # forward window
+NAN_THRESHOLD      = 0.80
 
 
 # ---------------------------------------------------------------------------
@@ -68,7 +80,7 @@ def connect_to_openeo() -> openeo.Connection:
 
 
 # ---------------------------------------------------------------------------
-# Core: build one process graph per band
+# Sentinel-2 band fetching
 # ---------------------------------------------------------------------------
 
 def _build_composite(
@@ -79,78 +91,137 @@ def _build_composite(
     band: str,
     use_scl_mask: bool = True,
 ) -> openeo.DataCube:
-    """
-    Build an openEO process graph for ONE band.
-
-    use_scl_mask=True  -> SCL cloud filtering (preferred, cleaner data)
-    use_scl_mask=False -> No cloud filtering (fallback when mask kills all pixels)
-
-    Downloading one band at a time avoids the multi-band GeoTIFF ordering bug
-    where openEO returns only the first band regardless of how many were requested.
-    """
     bands_to_load = [band, "SCL"] if use_scl_mask else [band]
-
     cube = conn.load_collection(
         COLLECTION,
         spatial_extent=bbox,
         temporal_extent=[start_date, end_date],
         bands=bands_to_load,
-        max_cloud_cover=90,  # loose pre-filter; SCL mask does the real work
+        max_cloud_cover=90,
     )
-
     if use_scl_mask:
         scl = cube.band("SCL")
-
-        # FIX vs original: include MORE SCL classes.
-        # Original kept only 4,5,6,7 which is too aggressive for cloudy spring days.
-        # Now also keep:
-        #   3 = cloud shadow  (darker but valid spectral signal over water)
-        #   8 = medium cloud probability  (border pixels, often perfectly usable)
-        # Still rejecting: 0=no-data, 1=saturated, 9=high-cloud, 10=cirrus, 11=snow
         valid_mask = (
-            (scl == 3) |   # cloud shadow
-            (scl == 4) |   # vegetation
-            (scl == 5) |   # not vegetated
-            (scl == 6) |   # water  <- most important class for this app
-            (scl == 7) |   # unclassified
-            (scl == 8)     # medium cloud probability
+            (scl == 3) | (scl == 4) | (scl == 5) |
+            (scl == 6) | (scl == 7) | (scl == 8)
         )
         cube = cube.filter_bands([band]).mask(~valid_mask)
-
-    # Temporal median composite → cloud-reduced single image per pixel
     composite = cube.reduce_dimension(dimension="t", reducer="median")
-
-    # Normalise DN (0-10000) → reflectance (0.0-1.0)
     return composite / 10000.0
 
 
 def _download_to_array(datacube: openeo.DataCube, band_name: str) -> np.ndarray:
-    """Download a single-band DataCube and return a 2D float32 numpy array."""
     logger.info(f"Per-band download starting for {band_name}...")
     raw = datacube.download(format="GTiff")
-
     with rasterio.open(io.BytesIO(raw)) as src:
         arr = src.read(1).astype(np.float32)
         if src.nodata is not None:
             arr[arr == src.nodata] = np.nan
-
-    # Sentinel-2 L2A uses integer 0 as the nodata sentinel.
-    # After dividing by 10000, nodata pixels appear as exactly 0.0.
-    # Replace with NaN (genuine reflectance of 0.0 is physically impossible).
     arr[arr == 0.0] = np.nan
-
     nan_frac = float(np.mean(np.isnan(arr)))
-    logger.info(
-        f"Per-band download completed for {band_name}: "
-        f"shape={arr.shape}, NaN={nan_frac:.1%}"
-    )
+    logger.info(f"Per-band download completed for {band_name}: shape={arr.shape}, NaN={nan_frac:.1%}")
     return arr
 
 
 def _nan_fraction(bands: Dict[str, np.ndarray]) -> float:
-    """Return the average NaN fraction across all downloaded band arrays."""
     fracs = [np.mean(np.isnan(arr)) for arr in bands.values()]
     return float(np.mean(fracs)) if fracs else 1.0
+
+
+# ---------------------------------------------------------------------------
+# Rainfall historical — Open-Meteo archive API (ERA5 reanalysis)
+# ---------------------------------------------------------------------------
+
+def fetch_era5_rainfall(
+    conn: openeo.Connection,
+    bbox: Dict,
+    days_back: int = RAINFALL_DAYS_BACK,
+) -> Optional[float]:
+    """
+    Fetch accumulated precipitation (mm) for the past `days_back` days.
+    Uses Open-Meteo archive API (ERA5-backed, no API key needed).
+    `conn` is unused but kept for signature compatibility.
+    """
+    lat = (bbox["south"] + bbox["north"]) / 2
+    lon = (bbox["west"]  + bbox["east"])  / 2
+    start_date, end_date = get_time_range(days_back)
+
+    url = (
+        f"https://archive-api.open-meteo.com/v1/archive"
+        f"?latitude={lat}&longitude={lon}"
+        f"&start_date={start_date}&end_date={end_date}"
+        f"&daily=precipitation_sum&timezone=UTC"
+    )
+    logger.info(f"Fetching Open-Meteo ERA5 rainfall | lat={lat:.4f}, lon={lon:.4f} | {start_date}/{end_date}")
+
+    try:
+        with urllib.request.urlopen(url, timeout=15) as resp:
+            data = _json.loads(resp.read().decode())
+        values = data.get("daily", {}).get("precipitation_sum", [])
+        if not values:
+            logger.warning("Open-Meteo: no precipitation data returned.")
+            return None
+        total_mm = max(0.0, sum(v for v in values if v is not None))
+        logger.info(f"Open-Meteo rainfall: {total_mm:.2f} mm over {days_back} days")
+        return round(total_mm, 2)
+    except Exception as e:
+        logger.warning(f"Open-Meteo rainfall fetch failed (non-fatal): {e}")
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Rainfall forecast — Open-Meteo forecast API
+# ---------------------------------------------------------------------------
+
+def fetch_rainfall_forecast(
+    lat: float,
+    lon: float,
+    days: int = FORECAST_DAYS,
+) -> List[Dict[str, Any]]:
+    """
+    Fetch daily precipitation forecast for the next `days` days.
+    Uses Open-Meteo forecast API (GFS/ECMWF blend, no API key needed).
+
+    Returns a list of dicts:
+        [{"date": "2026-04-26", "predicted_rainfall_mm": 3.2}, ...]
+
+    Today is excluded (partial day). Returns [] on failure.
+    """
+    today    = datetime.utcnow().date()
+    end_date = today + timedelta(days=days)
+
+    url = (
+        f"https://api.open-meteo.com/v1/forecast"
+        f"?latitude={lat}&longitude={lon}"
+        f"&daily=precipitation_sum"
+        f"&forecast_days={days + 1}"
+        f"&timezone=UTC"
+    )
+    logger.info(f"Fetching Open-Meteo forecast | lat={lat:.4f}, lon={lon:.4f} | next {days} days")
+
+    try:
+        with urllib.request.urlopen(url, timeout=15) as resp:
+            data = _json.loads(resp.read().decode())
+        dates  = data.get("daily", {}).get("time", [])
+        values = data.get("daily", {}).get("precipitation_sum", [])
+
+        forecast = []
+        for date_str, val in zip(dates, values):
+            if date_str <= today.strftime("%Y-%m-%d"):
+                continue  # skip today (partial)
+            if date_str > end_date.strftime("%Y-%m-%d"):
+                break
+            forecast.append({
+                "date":                  date_str,
+                "predicted_rainfall_mm": round(val, 2) if val is not None else None,
+            })
+
+        logger.info(f"Open-Meteo forecast: {len(forecast)} days fetched")
+        return forecast
+
+    except Exception as e:
+        logger.warning(f"Open-Meteo forecast fetch failed (non-fatal): {e}")
+        return []
 
 
 # ---------------------------------------------------------------------------
@@ -159,16 +230,12 @@ def _nan_fraction(bands: Dict[str, np.ndarray]) -> float:
 
 def fetch_sentinel2_bands(lat: float, lon: float) -> Dict[str, Any]:
     """
-    Fetch B03, B04, B05, B08 from Sentinel-2 L2A for the given coordinate.
-
-    Three-pass retry strategy to handle cloud cover and missing data:
-      Pass 1: 15-day window + loosened SCL mask (best quality)
-      Pass 2: 15-day window, NO SCL mask  (fallback: noisier but never all-NaN)
-      Pass 3: 45-day window, NO SCL mask  (wide fallback for persistent cloud cover)
+    Fetch Sentinel-2 bands + historical rainfall + 5-day forecast.
 
     Returns
     -------
-    dict with keys: bands, bbox, time_range, timestamp, masked
+    dict with keys: bands, bbox, time_range, timestamp, masked,
+                    rainfall_mm, rainfall_forecast
     """
     conn = connect_to_openeo()
     bbox = get_bounding_box(lat, lon)
@@ -181,25 +248,19 @@ def fetch_sentinel2_bands(lat: float, lon: float) -> Dict[str, Any]:
 
     for days_back, use_mask, label in attempts:
         start_date, end_date = get_time_range(days_back)
-        logger.info(
-            f"Fetching Sentinel-2 | strategy='{label}' | "
-            f"bbox={bbox} | time={start_date}/{end_date}"
-        )
+        logger.info(f"Fetching Sentinel-2 | strategy='{label}' | bbox={bbox} | time={start_date}/{end_date}")
 
         bands: Dict[str, np.ndarray] = {}
         download_ok = True
 
         for band in REQUIRED_BANDS:
             try:
-                cube = _build_composite(
-                    conn, bbox, start_date, end_date, band, use_mask
-                )
-                arr = _download_to_array(cube, band)
-                bands[band] = arr
+                cube = _build_composite(conn, bbox, start_date, end_date, band, use_mask)
+                bands[band] = _download_to_array(cube, band)
             except Exception as e:
                 logger.warning(f"Band {band} download failed ({label}): {e}")
                 download_ok = False
-                break   # try next strategy entirely
+                break
 
         if not download_ok:
             continue
@@ -209,21 +270,20 @@ def fetch_sentinel2_bands(lat: float, lon: float) -> Dict[str, Any]:
 
         if nan_frac < NAN_THRESHOLD:
             logger.info(f"Valid data obtained with strategy: '{label}'")
+            rainfall_mm       = fetch_era5_rainfall(conn, bbox, days_back=RAINFALL_DAYS_BACK)
+            rainfall_forecast = fetch_rainfall_forecast(lat, lon, days=FORECAST_DAYS)
             return {
-                "bands":      bands,
-                "bbox":       bbox,
-                "time_range": (start_date, end_date),
-                "timestamp":  datetime.utcnow().isoformat(),
-                "masked":     use_mask,
+                "bands":             bands,
+                "bbox":              bbox,
+                "time_range":        (start_date, end_date),
+                "timestamp":         datetime.utcnow().isoformat(),
+                "masked":            use_mask,
+                "rainfall_mm":       rainfall_mm,
+                "rainfall_forecast": rainfall_forecast,
             }
 
-        logger.warning(
-            f"Strategy '{label}': NaN={nan_frac:.1%} exceeds threshold "
-            f"{NAN_THRESHOLD:.0%}. Trying next strategy."
-        )
+        logger.warning(f"Strategy '{label}': NaN={nan_frac:.1%} exceeds threshold. Trying next.")
 
     raise ValueError(
-        f"No valid Sentinel-2 data for lat={lat}, lon={lon} after all fallback "
-        f"strategies. The area is likely persistently cloud-covered or outside "
-        f"Sentinel-2 coverage. Try again in a few days."
+        f"No valid Sentinel-2 data for lat={lat}, lon={lon} after all fallback strategies."
     )

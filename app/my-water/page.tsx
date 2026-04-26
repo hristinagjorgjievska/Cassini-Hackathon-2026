@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getRegions, getDisturbanceColor, disturbanceColors, disturbanceDescriptions, getDisturbanceLabel, addCustomWaterSource, updateCustomWaterSource, deleteCustomWaterSource, clearAllCustomWaterSources, type WaterSource } from "@/lib/waterData";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AlertModal } from "@/components/AlertModal";
 import { useAuth } from "@/lib/AuthContext";
 
 export default function MyWaterPage() {
@@ -14,6 +15,12 @@ export default function MyWaterPage() {
   const [latitude, setLatitude] = useState("");
   const [selectedDisturbances, setSelectedDisturbances] = useState<string[]>([]);
   const [editingSourceId, setEditingSourceId] = useState<number | null>(null);
+
+  const [modalConfig, setModalConfig] = useState<{isOpen: boolean, title: string, message: string, type: "error" | "info" | "warning" | "success", onConfirm?: () => void, confirmText?: string}>({isOpen: false, title: "", message: "", type: "info"});
+
+  const showAlert = (title: string, message: string, type: "error" | "info" | "warning" | "success" = "info", onConfirm?: () => void, confirmText?: string) => {
+    setModalConfig({ isOpen: true, title, message, type, onConfirm, confirmText });
+  };
 
   const loadData = () => {
     const currentRegions = getRegions();
@@ -37,7 +44,7 @@ export default function MyWaterPage() {
     const lat = parseFloat(latitude);
     
     if (isNaN(lng) || isNaN(lat)) {
-      alert("Invalid coordinates");
+      showAlert("Invalid Input", "Please enter valid numeric coordinates.", "error");
       return;
     }
     
@@ -64,17 +71,29 @@ export default function MyWaterPage() {
   };
 
   const handleDelete = (id: number) => {
-    if (window.confirm("Are you sure you want to delete this tracked point?")) {
-      deleteCustomWaterSource(id);
-      loadData();
-    }
+    showAlert(
+      "Delete Water Source", 
+      "Are you sure you want to delete this tracked point? This cannot be undone.", 
+      "warning", 
+      () => {
+        deleteCustomWaterSource(id);
+        loadData();
+      }, 
+      "Delete"
+    );
   };
 
   const handleClearAll = () => {
-    if (window.confirm(`Remove all ${waterSources.length} tracked point${waterSources.length !== 1 ? "s" : ""}? This cannot be undone.`)) {
-      clearAllCustomWaterSources();
-      loadData();
-    }
+    showAlert(
+      "Clear All Points", 
+      `Remove all ${waterSources.length} tracked point${waterSources.length !== 1 ? "s" : ""}? This cannot be undone.`, 
+      "error", 
+      () => {
+        clearAllCustomWaterSources();
+        loadData();
+      }, 
+      "Clear All"
+    );
   };
 
   const handleCheckbox = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,6 +107,15 @@ export default function MyWaterPage() {
 
   return (
     <ProtectedRoute>
+      <AlertModal 
+        isOpen={modalConfig.isOpen} 
+        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))} 
+        title={modalConfig.title} 
+        message={modalConfig.message} 
+        type={modalConfig.type} 
+        onConfirm={modalConfig.onConfirm}
+        confirmText={modalConfig.confirmText}
+      />
       <section className="min-h-[calc(100vh-4rem)] w-full bg-slate-50 dark:bg-slate-900 p-6 sm:p-8 transition-colors">
         <div className="mx-auto max-w-6xl">
           <header className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
