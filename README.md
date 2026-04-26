@@ -210,6 +210,4 @@ The notebook lets you:
 - Satellite data fetch takes **60–120 seconds** per unique location (openEO job execution)
 - Results are **cached for 30 minutes** to avoid redundant requests
 - Cache key rounds to ±0.01° (~1km grid)
-- Up to **10 concurrent** satellite requests via ThreadPoolExecutor
 
-For hackathon demos, pre-warm the cache by calling key locations on startup.
