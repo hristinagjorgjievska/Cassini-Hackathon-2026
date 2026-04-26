@@ -72,6 +72,26 @@ export const disturbanceDescriptions: Record<string, string> = {
 
 export type Disturbance = { id: number; type: string; };
 
+export type ForecastDay = {
+    day: number;
+    date: string;
+    risk: number;
+    category: string;
+    status_color: string;
+    rain: number;
+    pollution_pred: number;
+    eu_alert: boolean;
+    message: string;
+};
+
+export type EUAlert = {
+    triggered: boolean;
+    first_exceedance_date: string | null;
+    days_until_exceedance: number | null;
+    category: string | null;
+    message: string;
+};
+
 export type SatelliteData = {
     ndwi: number | null;
     ndci: number | null;
@@ -80,6 +100,10 @@ export type SatelliteData = {
     water_detected: boolean;
     pollution_status: string;
     timestamp: string;
+    rainfall_mm?: number | null;
+    rainfall_impact?: string | null;
+    forecast?: ForecastDay[];
+    eu_alert?: EUAlert;
 };
 
 export type WaterSource = {
@@ -305,13 +329,7 @@ export function getMockHistoricalData(id: number) {
     return data;
 }
 
-export function getMockForecast(id: number) {
-    return [
-        { day: "Tomorrow", status: "Healthy", score: 15, color: "#22c55e" },
-        { day: "In 2 Days", status: "Mediocre", score: 45, color: "#eab308" },
-        { day: "In 3 Days", status: "Harmfull", score: 75, color: "#f97316" }
-    ];
-}
+
 
 export function mapSatelliteToDisturbances(data: SatelliteData): Disturbance[] {
     const result: Disturbance[] = [];

@@ -7,7 +7,6 @@ import {
   getDisturbanceColor,
   getDisturbanceLabel,
   getMockHistoricalData,
-  getMockForecast,
   enrichWaterSourceWithSatellite,
   markWaterSourceSatelliteStatus,
   markWaterSourcePending,
@@ -17,8 +16,9 @@ import {
 } from "@/lib/waterData";
 import { analyzeWater, checkApiHealth } from "@/lib/satelliteApi";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AlertModal } from "@/components/AlertModal";
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
-import { ArrowLeft, MapPin, TrendingUp, Droplets, Satellite, RefreshCw } from "lucide-react";
+import { ArrowLeft, MapPin, TrendingUp, Droplets, Satellite, RefreshCw, AlertTriangle, CloudRain } from "lucide-react";
 import Link from "next/link";
 
 export default function WaterSourceDetailsPage() {
@@ -26,15 +26,18 @@ export default function WaterSourceDetailsPage() {
   const id = parseInt(params.id as string);
   const [source, setSource] = useState<WaterSource | null>(null);
   const [history, setHistory] = useState<any[]>([]);
-  const [forecast, setForecast] = useState<any[]>([]);
   const [retrying, setRetrying] = useState(false);
+  const [modalConfig, setModalConfig] = useState<{isOpen: boolean, title: string, message: string, type: "error" | "info" | "warning" | "success"}>({isOpen: false, title: "", message: "", type: "info"});
+
+  const showAlert = (title: string, message: string, type: "error" | "info" | "warning" | "success" = "info") => {
+    setModalConfig({ isOpen: true, title, message, type });
+  };
 
   const reload = () => {
     const data = getWaterSourceById(id);
     if (data) {
       setSource(data);
       setHistory(getMockHistoricalData(id));
-      setForecast(getMockForecast(id));
     }
   };
 
@@ -54,7 +57,7 @@ export default function WaterSourceDetailsPage() {
     if (!source || retrying) return;
     const online = await checkApiHealth();
     if (!online) {
-      alert("Satellite API is offline. Start it with:\nuvicorn api:app --host 0.0.0.0 --port 8000 --reload");
+      showAlert("Satellite API Offline", "Satellite API is offline. Start it with:\n\nuvicorn api:app --host 0.0.0.0 --port 8000 --reload", "error");
       return;
     }
     setRetrying(true);
@@ -89,6 +92,13 @@ export default function WaterSourceDetailsPage() {
 
   return (
     <ProtectedRoute>
+      <AlertModal 
+        isOpen={modalConfig.isOpen} 
+        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))} 
+        title={modalConfig.title} 
+        message={modalConfig.message} 
+        type={modalConfig.type} 
+      />
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors pb-12">
         <div className="mx-auto max-w-6xl p-6 sm:p-8">
           <Link href="/my-water" className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-[#0277bd] transition-colors mb-6">
@@ -254,6 +264,14 @@ export default function WaterSourceDetailsPage() {
                       source.satelliteData.pollution_status === "MEDIUM" ? "text-amber-500" : "text-emerald-600"
                     }`}>{source.satelliteData.pollution_status}</span>
                   </div>
+                  {source.satelliteData.rainfall_mm !== undefined && source.satelliteData.rainfall_mm !== null && (
+                    <div className="mt-2 flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700">
+                      <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5"><CloudRain className="h-3.5 w-3.5" /> 5-Day Rainfall</span>
+                      <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                        {source.satelliteData.rainfall_mm.toFixed(1)} mm ({source.satelliteData.rainfall_impact})
+                      </span>
+                    </div>
+                  )}
                   <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-3 text-right">
                     Analyzed: {new Date(source.satelliteData.timestamp).toLocaleString()}
                   </p>
@@ -282,35 +300,78 @@ export default function WaterSourceDetailsPage() {
                 </section>
               )}
 
-              <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
-                <h2 className="text-xl font-bold flex items-center gap-2 mb-6 text-slate-800 dark:text-slate-100">
-                  <TrendingUp className="h-5 w-5 text-[#0277bd]" />
-                  3-Day Forecast
-                </h2>
-                <div className="space-y-4">
-                  {forecast.map((f, i) => (
-                    <div key={i} className="flex items-center justify-between p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 transition-all hover:bg-white dark:hover:bg-slate-800 hover:shadow-md hover:-translate-y-1">
-                      <div>
-                        <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">{f.day}</div>
-                        <div className="text-lg font-bold text-slate-900 dark:text-slate-100">{f.status}</div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-2xl font-black" style={{ color: f.color }}>{f.score}%</div>
-                        <div className="h-2.5 w-12 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                           <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${f.score}%`, backgroundColor: f.color }} />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-8 p-5 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
-                  <div className="font-bold mb-1 flex items-center gap-1.5 uppercase tracking-wider">
-                    <TrendingUp className="h-3.5 w-3.5" />
-                    AI Predictive Model
+              {source.satelliteData?.eu_alert?.triggered && (
+                <section className="bg-red-50 dark:bg-red-900/20 p-6 rounded-3xl border border-red-200 dark:border-red-800/50 shadow-sm mb-8 animate-pulse">
+                  <div className="flex items-center gap-3 mb-2">
+                    <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                    <h2 className="text-lg font-bold text-red-800 dark:text-red-200">EU Bathing Water Alert</h2>
                   </div>
-                  Forecast based on seasonal patterns and recent disturbance trends. Precision increases with more tracking data.
-                </div>
-              </section>
+                  <p className="text-sm text-red-700 dark:text-red-300 font-medium">
+                    {source.satelliteData.eu_alert.message}
+                  </p>
+                  {source.satelliteData.eu_alert.first_exceedance_date && (
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-2 font-bold">
+                      Expected Exceedance Date: {new Date(source.satelliteData.eu_alert.first_exceedance_date).toLocaleDateString()}
+                    </p>
+                  )}
+                </section>
+              )}
+
+              {source.satelliteData?.forecast && source.satelliteData.forecast.length > 0 ? (
+                <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
+                  <h2 className="text-xl font-bold flex items-center gap-2 mb-6 text-slate-800 dark:text-slate-100">
+                    <TrendingUp className="h-5 w-5 text-[#0277bd]" />
+                    5-Day Forecast
+                  </h2>
+                  <div className="space-y-4">
+                    {source.satelliteData.forecast.map((f, i) => {
+                      const colors: Record<string, string> = {
+                        BLUE: "#3b82f6",
+                        GREEN: "#22c55e",
+                        YELLOW: "#eab308",
+                        RED: "#ef4444"
+                      };
+                      const color = colors[f.status_color] || colors.GREEN;
+                      const riskPercent = Math.round(f.risk * 100);
+                      
+                      return (
+                        <div key={i} className="flex items-center justify-between p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 transition-all hover:bg-white dark:hover:bg-slate-800 hover:shadow-md hover:-translate-y-1">
+                          <div className="flex-1 pr-4">
+                            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                              Day {f.day} • {new Date(f.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                            </div>
+                            <div className="text-lg font-bold text-slate-900 dark:text-slate-100">{f.category}</div>
+                            <div className="text-xs text-slate-500 mt-0.5">{f.message} {f.rain > 0 && `(${f.rain}mm rain)`}</div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-2xl font-black" style={{ color }}>{riskPercent}%</div>
+                            <div className="h-2.5 w-12 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0">
+                               <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, Math.max(5, riskPercent))}%`, backgroundColor: color }} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-8 p-5 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+                    <div className="font-bold mb-1 flex items-center gap-1.5 uppercase tracking-wider">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      AI Predictive Model
+                    </div>
+                    Forecast based on expected rainfall, current satellite indices, and EU Bathing Water Directive thresholds.
+                  </div>
+                </section>
+              ) : !source.pending && (
+                <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10 text-center">
+                  <h2 className="text-xl font-bold flex items-center justify-center gap-2 mb-4 text-slate-800 dark:text-slate-100">
+                    <TrendingUp className="h-5 w-5 text-slate-400" />
+                    5-Day Forecast
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                    Run Satellite Analysis to generate a 5-day predictive forecast.
+                  </p>
+                </section>
+              )}
             </div>
           </div>
         </div>

@@ -61,8 +61,6 @@ pip install -r requirements.txt
 ```bash
 python -c "import openeo; c = openeo.connect('https://openeo.dataspace.copernicus.eu'); c.authenticate_oidc()"
 ```
-
-add your "lat" and "lon" values, the ones entered are for example.
 ```bash
 Invoke-RestMethod -Uri "http://localhost:8000/analyze-water" -Method Post -ContentType "application/json" -Body '{"lat": 41.0297, "lon": 20.7169}'
 ```
@@ -74,23 +72,92 @@ uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 
 ### 4. Test it
 ```bash
-Invoke-RestMethod -Uri "http://localhost:8000/analyze-water" -Method Post -ContentType "application/json" -Body '{"lat": 31.74491, "lon": 50.13993}'
+curl -X POST http://localhost:8000/analyze-water \
+  -H "Content-Type: application/json" \
+  -d '{"lat": 41.0297, "lon": 20.7169}'
 ```
 
 Expected response:
 ```json
 {
     "location": {
-        "lat": 44.7224,
-        "lon": 21.1599
+        "lat": 41.233839,
+        "lon": 22.765841
     },
-    "ndwi": -0.4227,
-    "ndci": 0.1948,
-    "turbidity": -0.068,
-    "suspendent_sediment": 0.082,
-    "water_detected": false,
+    "ndwi": 0.4404,
+    "ndci": 0.0027,
+    "turbidity": -0.257,
+    "suspendent_sediment": -0.0582,
+    "water_detected": true,
     "pollution_status": "MEDIUM",
-    "timestamp": "2026-04-25T14:28:23.527454",
+    "rainfall_mm": 22.3,
+    "rainfall_impact": "HIGH",
+    "forecast": [
+        {
+            "day": 1,
+            "date": "2026-04-26",
+            "risk": 0.01,
+            "category": "GOOD",
+            "status_color": "GREEN",
+            "rain": 0.0,
+            "pollution_pred": 0.0027,
+            "eu_alert": false,
+            "message": "Safe for Irrigation"
+        },
+        {
+            "day": 2,
+            "date": "2026-04-27",
+            "risk": 0.01,
+            "category": "GOOD",
+            "status_color": "GREEN",
+            "rain": 0.0,
+            "pollution_pred": 0.0026,
+            "eu_alert": false,
+            "message": "Safe for Irrigation"
+        },
+        {
+            "day": 3,
+            "date": "2026-04-28",
+            "risk": 0.01,
+            "category": "GOOD",
+            "status_color": "GREEN",
+            "rain": 0.0,
+            "pollution_pred": 0.0026,
+            "eu_alert": false,
+            "message": "Safe for Irrigation"
+        },
+        {
+            "day": 4,
+            "date": "2026-04-29",
+            "risk": 0.01,
+            "category": "GOOD",
+            "status_color": "GREEN",
+            "rain": 0.0,
+            "pollution_pred": 0.0026,
+            "eu_alert": false,
+            "message": "Safe for Irrigation"
+        },
+        {
+            "day": 5,
+            "date": "2026-04-30",
+            "risk": 0.07,
+            "category": "GOOD",
+            "status_color": "GREEN",
+            "rain": 2.7,
+            "pollution_pred": 0.0133,
+            "eu_alert": false,
+            "message": "Safe for Irrigation"
+        }
+    ],
+    "eu_alert": {
+        "triggered": false,
+        "first_exceedance_date": null,
+        "days_until_exceedance": null,
+        "category": null,
+        "message": "Water safe for irrigation."
+    },
+    "alert_dispatched": false,
+    "timestamp": "2026-04-25T21:19:43.142304",
     "cached": false
 }
 ```
