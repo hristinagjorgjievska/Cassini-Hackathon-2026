@@ -29,7 +29,7 @@ FORECAST:
 import io
 import json as _json
 import logging
-import urllib.request
+import requests
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -155,8 +155,9 @@ def fetch_era5_rainfall(
     logger.info(f"Fetching Open-Meteo ERA5 rainfall | lat={lat:.4f}, lon={lon:.4f} | {start_date}/{end_date}")
 
     try:
-        with urllib.request.urlopen(url, timeout=15) as resp:
-            data = _json.loads(resp.read().decode())
+        resp = requests.get(url, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
         values = data.get("daily", {}).get("precipitation_sum", [])
         if not values:
             logger.warning("Open-Meteo: no precipitation data returned.")
@@ -200,8 +201,9 @@ def fetch_rainfall_forecast(
     logger.info(f"Fetching Open-Meteo forecast | lat={lat:.4f}, lon={lon:.4f} | next {days} days")
 
     try:
-        with urllib.request.urlopen(url, timeout=15) as resp:
-            data = _json.loads(resp.read().decode())
+        resp = requests.get(url, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
         dates  = data.get("daily", {}).get("time", [])
         values = data.get("daily", {}).get("precipitation_sum", [])
 

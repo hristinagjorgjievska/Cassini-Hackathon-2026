@@ -244,29 +244,61 @@ def predict_water_quality_forecast(
 ) -> List[Dict[str, Any]]:
     forecast_days = []
     current_ndci = base_ndci if base_ndci is not None else 0.0
+    current_turb = base_turb if base_turb is not None else 0.0
+    current_ssd = base_ssd if base_ssd is not None else 0.0
 
     # Logic for Irrigation
     # Irrigation is threatened by Algae (clogs filters) and Sediment (SSD)
-    for i, day_data in enumerate(rainfall_forecast[:5], start=1):
-        rain = float(day_data.get("predicted_rainfall_mm", 0) or 0)
+    padded_forecast = list(rainfall_forecast) + [{}] * max(0, 5 - len(rainfall_forecast))
+    for i, day_data in enumerate(padded_forecast[:5], start=1):
+        if day_data:
+            rain = float(day_data.get("predicted_rainfall_mm", 0) or 0)
+            date_str = day_data.get("date", (datetime.utcnow() + timedelta(days=i)).strftime("%Y-%m-%d"))
+        else:
+            rain = 0.0
+            date_str = (datetime.utcnow() + timedelta(days=i)).strftime("%Y-%m-%d")
 
         # Simple projection
         current_ndci = (current_ndci * (1 - ATTENUATION_RATE)) + (rain * RUNOFF_COEFF)
+        current_turb = (current_turb * (1 - ATTENUATION_RATE)) - (rain * 0.002)
+        current_ssd = (current_ssd * (1 - ATTENUATION_RATE)) + (rain * 0.005)
 
-        # TRIGGER: Irrigation is "POOR" if NDCI > 0.15 (Algae)
-        # (Usually 0.20 for bathing, we make it stricter for pumps/filters)
-        is_irrigation_safe = current_ndci < 0.15
+        # Count disturbances
+        disturbances = 0
+        if current_ndci > 0.05:
+            disturbances += 1
+        if current_ndci >= 0.0:
+            disturbances += 1
+        if current_turb < -0.05 or current_ssd > 0.15:
+            disturbances += 1
+
+        if disturbances >= 4:
+            risk = 1.00
+            category = "Critical"
+            color = "RED"
+        elif disturbances == 3:
+            risk = 0.75
+            category = "Harmful"
+            color = "ORANGE"
+        elif disturbances >= 1:
+            risk = 0.45
+            category = "Mediocre"
+            color = "YELLOW"
+        else:
+            risk = 0.00
+            category = "Healthy"
+            color = "GREEN"
 
         forecast_days.append({
             "day": i,
-            "date": day_data.get("date"),
-            "risk": round(min(1.0, current_ndci * 5), 2),
-            "category": "GOOD" if is_irrigation_safe else "POOR",
-            "status_color": "GREEN" if is_irrigation_safe else "RED",
+            "date": date_str,
+            "risk": risk,
+            "category": category,
+            "status_color": color,
             "rain": round(rain, 2),
             "pollution_pred": round(current_ndci, 4),
-            "eu_alert": not is_irrigation_safe,  # Keep the name eu_alert
-            "message": "Safe for Irrigation" if is_irrigation_safe else "Alert: Irrigation Hazard (High Algae/Sediment)"
+            "eu_alert": risk >= 0.75,
+            "message": f"Projected disturbances: {disturbances} ({int(risk*100)}% risk)"
         })
     return forecast_days
 
@@ -325,15 +357,15 @@ def build_eu_alert(forecast: List[Dict[str, Any]], current_ndci: Optional[float]
                 "triggered": True,
                 "first_exceedance_date": day["date"],
                 "days_until_exceedance": day["day"],
-                "category": "POOR",
-                "message": f"⚠️ Irrigation Warning: Predicted water quality hazard for farmers on {day['date']}."
+                "category": day["category"],
+                "message": f"⚠️ Warning: Predicted water quality hazard ({day['category']}) on {day['date']}."
             }
     return {
         "triggered": False,
         "first_exceedance_date": None,
         "days_until_exceedance": None,
         "category": None,
-        "message": "Water safe for irrigation."
+        "message": "Water safe from critical disturbances."
     }
 
 def process_water_quality(
@@ -397,6 +429,8 @@ def process_water_quality(
         base_ndci         = ndci_val  if ndci_val  is not None else 0.0,
         base_ndwi         = ndwi_val  if ndwi_val  is not None else 0.0,
         rainfall_forecast = rainfall_forecast or [],
+        base_turb         = turb_val  if turb_val  is not None else 0.0,
+        base_ssd          = sediment_val if sediment_val is not None else 0.0,
     )
 
     # ── EU alert ───────────────────────────────────────────────────────────────

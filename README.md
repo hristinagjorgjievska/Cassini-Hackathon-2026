@@ -1,213 +1,241 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌊 Cassini Water Monitoring Dashboard
 
-## Getting Started
+> **11th CASSINI Hackathon — Space for Water**  
+> Real-time water quality tracking, satellite telemetry, and AI-powered forecasting for inland water bodies.
 
-First, run the development server:
+---
 
+## 📺 Demo
+
+[![Watch the demo](https://img.shields.io/badge/YouTube-Watch%20Demo-red?logo=youtube)](YOUR_YOUTUBE_LINK_HERE)
+
+---
+
+## Overview
+
+The **Cassini Water Monitoring Dashboard** is a full-stack environmental web application that combines **Copernicus Sentinel-2 satellite imagery** with an **AI-driven prediction model** to monitor, analyze, and forecast water quality at user-defined geographic coordinates.
+
+Users add custom water sources by latitude/longitude. The platform fetches live satellite indices, evaluates compliance against **EU Bathing Water Directive 2006/7/EC**, and delivers a 5-day risk forecast enriched with real-time rainfall data.
+
+---
+
+## ✨ Features
+
+- **Custom Water Source Management** — Add, edit, and persistently track water locations by coordinates. Each source is a live monitoring node on the map and dashboard.
+- **Live Satellite Telemetry** — Fetches and computes key indices directly from Sentinel-2 imagery via the openEO Copernicus Data Space:
+  - `NDWI` — Normalized Difference Water Index (water vs. land detection)
+  - `NDCI` — Normalized Difference Chlorophyll Index (algae bloom detection)
+  - `Turbidity` — Water clarity measurement
+  - `Suspended Sediment Load` — Physical disturbance indicator
+- **AI-Powered 5-Day Forecast** — Predicts future water quality by combining current satellite indices with daily rainfall forecasts. Each day is assigned a risk score, category, and status color.
+- **EU Directive Compliance Alerts** — Automatically evaluates water conditions against the EU Bathing Water Directive. If exceedance is detected or projected (`NDCI > 0.20`), the UI triggers an early-warning alert with the expected breach date.
+- **14-Day Historical Trend Chart** — Interactive area chart visualizing the quality score history for any monitored location.
+- **Active Disturbance Log** — Dynamically categorizes and highlights active ecological events: algae blooms, industrial/urban runoff pollution, turbidity spikes, and temperature anomalies.
+
+---
+
+## 🏗️ Architecture
+
+```
+User → Next.js Frontend → FastAPI Backend → openEO (Copernicus Sentinel-2)
+                                         → Open-Meteo (Rainfall Forecast)
+```
+
+---
+
+## 🗂️ Project Structure
+
+```
+cassini-water-monitor/
+├── frontend/                    # Next.js web application
+│   ├── app/                     # App Router pages and layouts
+│   ├── components/              # UI components (map, charts, modals)
+│   └── ...
+│
+└── backend/                     # Python FastAPI service
+    ├── api.py                   # Endpoints + ThreadPoolExecutor
+    ├── data_fetch.py            # openEO pipeline — fetches Sentinel-2 bands
+    ├── processing.py            # NDWI/NDCI computation + pollution classification
+    ├── requirements.txt
+    └── water_quality_notebook.ipynb   # Copernicus JupyterHub exploration notebook
+```
+
+---
+
+## 🖥️ Tech Stack
+
+### Frontend
+| Technology | Purpose |
+|---|---|
+| Next.js (App Router) + React | Core framework |
+| TypeScript | Type safety |
+| Tailwind CSS | Styling, dark mode, responsive layout |
+| Recharts | Historical trend visualization |
+| Lucide React | Icon system |
+
+### Backend
+| Technology | Purpose |
+|---|---|
+| FastAPI + Uvicorn | REST API server |
+| Python | Core processing language |
+| openEO SDK | Copernicus Sentinel-2 data pipeline |
+| Open-Meteo API | Rainfall forecast data |
+| ThreadPoolExecutor | Concurrent satellite job execution |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js ≥ 18
+- Python ≥ 3.10
+- A Copernicus Data Space account ([register here](https://dataspace.copernicus.eu))
+
+---
+
+### Backend Setup
+
+**1. Install dependencies**
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-# 🌊 Water Quality Monitor — Backend
-
-Real-time water quality analysis using Copernicus Sentinel-2 satellite data.
-
-## Project Structure
-
-```
-water_quality/
-├── api.py              # FastAPI app — endpoints + ThreadPoolExecutor
-├── data_fetch.py       # openEO data pipeline — fetches Sentinel-2 bands
-├── processing.py       # NDWI/NDCI computation + pollution classification
-├── requirements.txt    # Python dependencies
-└── water_quality_notebook.ipynb  # Copernicus JupyterHub exploration notebook
-```
-
-## Setup
-
-### 1. Install dependencies
-```bash
+cd backend
 pip install -r requirements.txt
 ```
 
-### 2. First-time Copernicus authentication
+**2. Authenticate with Copernicus (first time only)**
 ```bash
 python -c "import openeo; c = openeo.connect('https://openeo.dataspace.copernicus.eu'); c.authenticate_oidc()"
 ```
-```bash
-Invoke-RestMethod -Uri "http://localhost:8000/analyze-water" -Method Post -ContentType "application/json" -Body '{"lat": 41.0297, "lon": 20.7169}'
-```
 
-### 3. Run the API server
+**3. Start the API server**
 ```bash
 uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 4. Test it
+**4. Verify it's running**
 ```bash
 curl -X POST http://localhost:8000/analyze-water \
   -H "Content-Type: application/json" \
   -d '{"lat": 41.0297, "lon": 20.7169}'
 ```
 
-Expected response:
+---
+
+### Frontend Setup
+
+**1. Install dependencies**
+```bash
+cd frontend
+npm install
+```
+
+**2. Configure environment**
+
+Create a `.env.local` file:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+**3. Start the development server**
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+## 📡 API Reference
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/analyze-water` | Analyze water quality at `{ lat, lon }` |
+| `GET` | `/health` | Health check + cache stats |
+| `GET` | `/docs` | Auto-generated Swagger UI |
+
+### Example Request
 ```json
+POST /analyze-water
 {
-    "location": {
-        "lat": 41.233839,
-        "lon": 22.765841
-    },
-    "ndwi": 0.4404,
-    "ndci": 0.0027,
-    "turbidity": -0.257,
-    "suspendent_sediment": -0.0582,
-    "water_detected": true,
-    "pollution_status": "MEDIUM",
-    "rainfall_mm": 22.3,
-    "rainfall_impact": "HIGH",
-    "forecast": [
-        {
-            "day": 1,
-            "date": "2026-04-26",
-            "risk": 0.01,
-            "category": "GOOD",
-            "status_color": "GREEN",
-            "rain": 0.0,
-            "pollution_pred": 0.0027,
-            "eu_alert": false,
-            "message": "Safe for Irrigation"
-        },
-        {
-            "day": 2,
-            "date": "2026-04-27",
-            "risk": 0.01,
-            "category": "GOOD",
-            "status_color": "GREEN",
-            "rain": 0.0,
-            "pollution_pred": 0.0026,
-            "eu_alert": false,
-            "message": "Safe for Irrigation"
-        },
-        {
-            "day": 3,
-            "date": "2026-04-28",
-            "risk": 0.01,
-            "category": "GOOD",
-            "status_color": "GREEN",
-            "rain": 0.0,
-            "pollution_pred": 0.0026,
-            "eu_alert": false,
-            "message": "Safe for Irrigation"
-        },
-        {
-            "day": 4,
-            "date": "2026-04-29",
-            "risk": 0.01,
-            "category": "GOOD",
-            "status_color": "GREEN",
-            "rain": 0.0,
-            "pollution_pred": 0.0026,
-            "eu_alert": false,
-            "message": "Safe for Irrigation"
-        },
-        {
-            "day": 5,
-            "date": "2026-04-30",
-            "risk": 0.07,
-            "category": "GOOD",
-            "status_color": "GREEN",
-            "rain": 2.7,
-            "pollution_pred": 0.0133,
-            "eu_alert": false,
-            "message": "Safe for Irrigation"
-        }
-    ],
-    "eu_alert": {
-        "triggered": false,
-        "first_exceedance_date": null,
-        "days_until_exceedance": null,
-        "category": null,
-        "message": "Water safe for irrigation."
-    },
-    "alert_dispatched": false,
-    "timestamp": "2026-04-25T21:19:43.142304",
-    "cached": false
+  "lat": 41.0297,
+  "lon": 20.7169
 }
 ```
 
-## API Endpoints
+### Example Response
+```json
+{
+  "location": { "lat": 41.0297, "lon": 20.7169 },
+  "ndwi": 0.4404,
+  "ndci": 0.0027,
+  "turbidity": -0.257,
+  "water_detected": true,
+  "pollution_status": "MEDIUM",
+  "rainfall_mm": 22.3,
+  "rainfall_impact": "HIGH",
+  "forecast": [ ... ],
+  "eu_alert": {
+    "triggered": false,
+    "message": "Water safe for irrigation."
+  }
+}
+```
 
-| Method | Path             | Description                            |
-|--------|------------------|----------------------------------------|
-| POST   | `/analyze-water` | Analyze water quality at {lat, lon}    |
-| GET    | `/health`        | Health check + cache stats             |
-| GET    | `/docs`          | Auto-generated Swagger UI              |
+---
 
-## Connecting the Frontend
+## 🟢 Pollution Classification
 
-In your frontend (the Macedonia map), when a user clicks a water area:
+| NDCI Value | Status | Meaning |
+|---|---|---|
+| `< 0` | 🟢 LOW | Clean water or land surface |
+| `0 – 0.2` | 🟡 MEDIUM | Moderate algae presence |
+| `> 0.2` | 🔴 HIGH | Algae bloom / likely pollution |
+
+---
+
+## 🔗 Connecting Frontend to Backend
+
+When a user selects a water location on the map:
+
 ```javascript
 const response = await fetch('http://localhost:8000/analyze-water', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ lat: clickedLat, lon: clickedLon })
 });
+
 const data = await response.json();
 // data.pollution_status → "LOW" | "MEDIUM" | "HIGH"
-// data.water_detected   → true/false
+// data.water_detected   → true | false
 // data.ndwi             → float
 // data.ndci             → float
+// data.forecast         → array of 5 daily predictions
 ```
 
-## Pollution Classification
+---
 
-| NDCI Value | Status | Meaning |
-|------------|--------|---------|
-| < 0        | 🟢 LOW    | Clean water or land surface |
-| 0 – 0.2    | 🟡 MEDIUM | Moderate algae presence |
-| > 0.2      | 🔴 HIGH   | Algae bloom / likely pollution |
+## ⚡ Performance Notes
 
-## JupyterHub Notebook
+- Satellite data fetch takes **60–120 seconds** per unique location (openEO job execution time)
+- Results are **cached for 30 minutes** to avoid redundant processing
+- Cache key is rounded to ±0.01° (~1 km grid resolution)
+- Up to **10 concurrent** satellite requests via `ThreadPoolExecutor`
 
-Upload `water_quality_notebook.ipynb` to:
-https://jupyterhub.dataspace.copernicus.eu
+> 💡 **Hackathon tip:** Pre-warm the cache by calling key locations on startup to ensure instant responses during demos.
 
-The notebook lets you:
+---
+
+## 🔬 JupyterHub Notebook
+
+Upload `water_quality_notebook.ipynb` to the [Copernicus JupyterHub](https://jupyterhub.dataspace.copernicus.eu) to:
+
 - Explore any coordinate interactively
-- Visualize NDWI and NDCI maps
-- Run batch analysis on multiple Macedonian lakes
-- Call the FastAPI backend from the notebook
+- Visualize NDWI and NDCI satellite maps
+- Run batch analysis across multiple water bodies
+- Call the FastAPI backend directly from the notebook
 
-## Performance Notes
+---
 
-- Satellite data fetch takes **60–120 seconds** per unique location (openEO job execution)
-- Results are **cached for 30 minutes** to avoid redundant requests
-- Cache key rounds to ±0.01° (~1km grid)
+## 👥 Authors
 
+Built for the **11th CASSINI Hackathon — Space for Water** 🛰️💧

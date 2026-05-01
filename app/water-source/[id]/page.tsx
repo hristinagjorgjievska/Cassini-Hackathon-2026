@@ -27,7 +27,7 @@ export default function WaterSourceDetailsPage() {
   const [source, setSource] = useState<WaterSource | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [retrying, setRetrying] = useState(false);
-  const [modalConfig, setModalConfig] = useState<{isOpen: boolean, title: string, message: string, type: "error" | "info" | "warning" | "success"}>({isOpen: false, title: "", message: "", type: "info"});
+  const [modalConfig, setModalConfig] = useState<{ isOpen: boolean, title: string, message: string, type: "error" | "info" | "warning" | "success" }>({ isOpen: false, title: "", message: "", type: "info" });
 
   const showAlert = (title: string, message: string, type: "error" | "info" | "warning" | "success" = "info") => {
     setModalConfig({ isOpen: true, title, message, type });
@@ -43,14 +43,14 @@ export default function WaterSourceDetailsPage() {
 
   useEffect(() => {
     if (id) reload();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
     const handleStorage = () => reload();
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const handleRetryAnalysis = async () => {
@@ -79,10 +79,10 @@ export default function WaterSourceDetailsPage() {
     return (
       <ProtectedRoute>
         <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-           <div className="text-center">
-             <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Water Source Not Found</h2>
-             <Link href="/my-water" className="text-[#0277bd] hover:underline font-medium">Return to Dashboard</Link>
-           </div>
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Water Source Not Found</h2>
+            <Link href="/my-water" className="text-[#0277bd] hover:underline font-medium">Return to Dashboard</Link>
+          </div>
         </div>
       </ProtectedRoute>
     );
@@ -92,12 +92,12 @@ export default function WaterSourceDetailsPage() {
 
   return (
     <ProtectedRoute>
-      <AlertModal 
-        isOpen={modalConfig.isOpen} 
-        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))} 
-        title={modalConfig.title} 
-        message={modalConfig.message} 
-        type={modalConfig.type} 
+      <AlertModal
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
       />
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors pb-12">
         <div className="mx-auto max-w-6xl p-6 sm:p-8">
@@ -143,31 +143,31 @@ export default function WaterSourceDetailsPage() {
           </header>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8">
-              <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
-                <div className="flex items-center justify-between mb-8">
+            <div className="lg:col-span-2">
+              <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10 h-full flex flex-col">
+                <div className="flex items-center justify-between mb-8 shrink-0">
                   <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100">
                     <TrendingUp className="h-5 w-5 text-[#0277bd]" />
                     Historical Water Quality Trend
                   </h2>
                   <div className="text-[10px] text-slate-400 uppercase tracking-widest font-bold bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded">Last 14 Days</div>
                 </div>
-                <div className="h-[350px] w-full">
+                <div className="w-full flex-1 min-h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={history}>
                       <defs>
                         <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#0277bd" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#0277bd" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#0277bd" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#0277bd" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                       <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} dy={10} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} domain={[0, 100]} />
-                      <Tooltip 
-                        contentStyle={{ 
-                          borderRadius: '16px', 
-                          border: 'none', 
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: '16px',
+                          border: 'none',
                           boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
                           backgroundColor: 'rgba(255, 255, 255, 0.95)',
                           padding: '12px'
@@ -180,37 +180,12 @@ export default function WaterSourceDetailsPage() {
                 </div>
               </section>
 
-              <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
-                <h2 className="text-xl font-bold flex items-center gap-2 mb-6 text-slate-800 dark:text-slate-100">
-                  <Droplets className="h-5 w-5 text-[#0277bd]" />
-                  Active Disturbances
-                </h2>
-                {source.disturbances.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {source.disturbances.map((d) => (
-                      <div key={d.id} className="flex items-start gap-4 p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 transition-colors">
-                        <div className="mt-1.5 h-4 w-4 shrink-0 rounded-full shadow-sm" style={{ backgroundColor: disturbanceColors[d.type] }} />
-                        <div>
-                          <div className="font-bold text-slate-900 dark:text-slate-100 capitalize">{d.type}</div>
-                          <div className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{disturbanceDescriptions[d.type]}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-emerald-600 dark:text-emerald-400 font-medium p-6 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
-                      <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    Water source is currently healthy and clear of disturbances.
-                  </div>
-                )}
-              </section>
+
             </div>
 
-            <div className="space-y-8">
+            <div className="h-full">
               {source.pending ? (
-                <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
+                <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10 h-full flex flex-col">
                   <h2 className="text-xl font-bold flex items-center gap-2 mb-6 text-slate-800 dark:text-slate-100">
                     <Satellite className="h-5 w-5 text-[#0277bd]" />
                     Satellite Metrics
@@ -222,7 +197,7 @@ export default function WaterSourceDetailsPage() {
                   </div>
                 </section>
               ) : source.satelliteData ? (
-                <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
+                <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10 h-full flex flex-col justify-between">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100">
                       <Satellite className="h-5 w-5 text-[#0277bd]" />
@@ -241,7 +216,7 @@ export default function WaterSourceDetailsPage() {
                         <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</span>
                         <span className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono">{value}</span>
                         <span className="text-xs text-slate-400">{hint}</span>
-                        
+
                         <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-56 -translate-x-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                           <div className="rounded-lg bg-slate-900 dark:bg-white p-3 text-xs leading-relaxed text-slate-100 dark:text-slate-800 shadow-xl text-center ring-1 ring-black/5 dark:ring-white/10">
                             {explanation}
@@ -259,10 +234,9 @@ export default function WaterSourceDetailsPage() {
                   </div>
                   <div className="mt-2 flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700">
                     <span className="text-xs text-slate-500 dark:text-slate-400">Pollution Status</span>
-                    <span className={`text-sm font-bold ${
-                      source.satelliteData.pollution_status === "HIGH" ? "text-red-500" :
-                      source.satelliteData.pollution_status === "MEDIUM" ? "text-amber-500" : "text-emerald-600"
-                    }`}>{source.satelliteData.pollution_status}</span>
+                    <span className={`text-sm font-bold ${source.satelliteData.pollution_status === "HIGH" ? "text-red-500" :
+                        source.satelliteData.pollution_status === "MEDIUM" ? "text-amber-500" : "text-emerald-600"
+                      }`}>{source.satelliteData.pollution_status}</span>
                   </div>
                   {source.satelliteData.rainfall_mm !== undefined && source.satelliteData.rainfall_mm !== null && (
                     <div className="mt-2 flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700">
@@ -272,12 +246,30 @@ export default function WaterSourceDetailsPage() {
                       </span>
                     </div>
                   )}
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-3 text-right">
+
+                  {source.satelliteData.eu_alert?.triggered && (
+                    <div className="mt-4 flex flex-col gap-3 p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/50 transition-colors">
+                      <div className="flex items-center gap-2 font-bold text-red-800 dark:text-red-200 text-sm">
+                        <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-500" />
+                        EU Bathing Water Alert
+                      </div>
+                      <p className="text-xs text-red-700 dark:text-red-300 font-medium leading-relaxed">
+                        {source.satelliteData.eu_alert.message}
+                      </p>
+                      {source.satelliteData.eu_alert.first_exceedance_date && (
+                        <p className="text-[10px] text-red-600 dark:text-red-400 font-bold bg-white/50 dark:bg-slate-900/50 w-fit px-2 py-1 rounded-lg">
+                          Expected Exceedance Date: {new Date(source.satelliteData.eu_alert.first_exceedance_date).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-4 text-right">
                     Analyzed: {new Date(source.satelliteData.timestamp).toLocaleString()}
                   </p>
                 </section>
               ) : (
-                <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
+                <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10 h-full flex flex-col justify-center">
                   <h2 className="text-xl font-bold flex items-center gap-2 mb-4 text-slate-800 dark:text-slate-100">
                     <Satellite className="h-5 w-5 text-slate-400" />
                     Satellite Metrics
@@ -300,79 +292,91 @@ export default function WaterSourceDetailsPage() {
                 </section>
               )}
 
-              {source.satelliteData?.eu_alert?.triggered && (
-                <section className="bg-red-50 dark:bg-red-900/20 p-6 rounded-3xl border border-red-200 dark:border-red-800/50 shadow-sm mb-8 animate-pulse">
-                  <div className="flex items-center gap-3 mb-2">
-                    <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
-                    <h2 className="text-lg font-bold text-red-800 dark:text-red-200">EU Bathing Water Alert</h2>
-                  </div>
-                  <p className="text-sm text-red-700 dark:text-red-300 font-medium">
-                    {source.satelliteData.eu_alert.message}
-                  </p>
-                  {source.satelliteData.eu_alert.first_exceedance_date && (
-                    <p className="text-xs text-red-600 dark:text-red-400 mt-2 font-bold">
-                      Expected Exceedance Date: {new Date(source.satelliteData.eu_alert.first_exceedance_date).toLocaleDateString()}
-                    </p>
-                  )}
-                </section>
-              )}
 
-              {source.satelliteData?.forecast && source.satelliteData.forecast.length > 0 ? (
-                <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
-                  <h2 className="text-xl font-bold flex items-center gap-2 mb-6 text-slate-800 dark:text-slate-100">
-                    <TrendingUp className="h-5 w-5 text-[#0277bd]" />
-                    5-Day Forecast
-                  </h2>
-                  <div className="space-y-4">
-                    {source.satelliteData.forecast.map((f, i) => {
-                      const colors: Record<string, string> = {
-                        BLUE: "#3b82f6",
-                        GREEN: "#22c55e",
-                        YELLOW: "#eab308",
-                        RED: "#ef4444"
-                      };
-                      const color = colors[f.status_color] || colors.GREEN;
-                      const riskPercent = Math.round(f.risk * 100);
-                      
-                      return (
-                        <div key={i} className="flex items-center justify-between p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 transition-all hover:bg-white dark:hover:bg-slate-800 hover:shadow-md hover:-translate-y-1">
-                          <div className="flex-1 pr-4">
-                            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
-                              Day {f.day} • {new Date(f.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                            </div>
-                            <div className="text-lg font-bold text-slate-900 dark:text-slate-100">{f.category}</div>
-                            <div className="text-xs text-slate-500 mt-0.5">{f.message} {f.rain > 0 && `(${f.rain}mm rain)`}</div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <div className="text-2xl font-black" style={{ color }}>{riskPercent}%</div>
-                            <div className="h-2.5 w-12 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0">
-                               <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, Math.max(5, riskPercent))}%`, backgroundColor: color }} />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="mt-8 p-5 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
-                    <div className="font-bold mb-1 flex items-center gap-1.5 uppercase tracking-wider">
-                      <TrendingUp className="h-3.5 w-3.5" />
-                      AI Predictive Model
-                    </div>
-                    Forecast based on expected rainfall, current satellite indices, and EU Bathing Water Directive thresholds.
-                  </div>
-                </section>
-              ) : !source.pending && (
-                <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10 text-center">
-                  <h2 className="text-xl font-bold flex items-center justify-center gap-2 mb-4 text-slate-800 dark:text-slate-100">
-                    <TrendingUp className="h-5 w-5 text-slate-400" />
-                    5-Day Forecast
-                  </h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                    Run Satellite Analysis to generate a 5-day predictive forecast.
-                  </p>
-                </section>
-              )}
+
             </div>
+          </div>
+
+          <div className="mt-8 space-y-8">
+            <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
+              <h2 className="text-xl font-bold flex items-center gap-2 mb-6 text-slate-800 dark:text-slate-100">
+                <Droplets className="h-5 w-5 text-[#0277bd]" />
+                Active Disturbances
+              </h2>
+              {source.disturbances.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {source.disturbances.map((d) => (
+                    <div key={d.id} className="flex items-start gap-4 p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 transition-all hover:bg-white dark:hover:bg-slate-800 hover:shadow-md hover:-translate-y-1">
+                      <div className="mt-1.5 h-4 w-4 shrink-0 rounded-full shadow-sm" style={{ backgroundColor: disturbanceColors[d.type] }} />
+                      <div>
+                        <div className="font-bold text-slate-900 dark:text-slate-100 capitalize">{d.type}</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{disturbanceDescriptions[d.type]}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-emerald-600 dark:text-emerald-400 font-medium p-6 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
+                    <Droplets className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  Water source is currently healthy and clear of disturbances.
+                </div>
+              )}
+            </section>
+
+            {source.satelliteData?.forecast && source.satelliteData.forecast.length > 0 ? (
+              <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10">
+                <h2 className="text-xl font-bold flex items-center gap-2 mb-6 text-slate-800 dark:text-slate-100">
+                  <TrendingUp className="h-5 w-5 text-[#0277bd]" />
+                  5-Day Forecast
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+                  {source.satelliteData.forecast.map((f, i) => {
+                    const colors: Record<string, string> = {
+                      BLUE: "#3b82f6",
+                      GREEN: "#22c55e",
+                      YELLOW: "#eab308",
+                      ORANGE: "#f97316",
+                      RED: "#ef4444"
+                    };
+                    const color = colors[f.status_color] || colors.GREEN;
+                    const riskPercent = Math.round(f.risk * 100);
+
+                    return (
+                      <div key={i} className="flex flex-col items-center text-center p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 transition-all hover:bg-white dark:hover:bg-slate-800 hover:shadow-md hover:-translate-y-1">
+                        <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">
+                          Day {f.day} • {new Date(f.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </div>
+                        <div className="text-lg font-bold text-slate-900 dark:text-slate-100">{f.category}</div>
+                        <div className="text-xs text-slate-500 mt-0.5 mb-3 flex-1">{f.message} {f.rain > 0 && `(${f.rain}mm rain)`}</div>
+                        <div className="text-2xl font-black mt-auto" style={{ color }}>{riskPercent}%</div>
+                        <div className="h-2 w-full mt-3 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0">
+                          <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, Math.max(5, riskPercent))}%`, backgroundColor: color }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-8 p-5 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+                  <div className="font-bold mb-1 flex items-center gap-1.5 uppercase tracking-wider">
+                    <TrendingUp className="h-3.5 w-3.5" />
+                    AI Predictive Model
+                  </div>
+                  Forecast based on expected rainfall, current satellite indices, and EU Bathing Water Directive thresholds.
+                </div>
+              </section>
+            ) : !source.pending && (
+              <section className="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-white/10 text-center">
+                <h2 className="text-xl font-bold flex items-center justify-center gap-2 mb-4 text-slate-800 dark:text-slate-100">
+                  <TrendingUp className="h-5 w-5 text-slate-400" />
+                  5-Day Forecast
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                  Run Satellite Analysis to generate a 5-day predictive forecast.
+                </p>
+              </section>
+            )}
           </div>
         </div>
       </div>
