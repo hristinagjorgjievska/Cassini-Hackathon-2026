@@ -43,14 +43,14 @@ export default function WaterSourceDetailsPage() {
 
   useEffect(() => {
     if (id) reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [id]);
 
   useEffect(() => {
     const handleStorage = () => reload();
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [id]);
 
   const handleRetryAnalysis = async () => {
@@ -180,7 +180,6 @@ export default function WaterSourceDetailsPage() {
                 </div>
               </section>
 
-
             </div>
 
             <div className="h-full">
@@ -291,8 +290,6 @@ export default function WaterSourceDetailsPage() {
                   </div>
                 </section>
               )}
-
-
 
             </div>
           </div>

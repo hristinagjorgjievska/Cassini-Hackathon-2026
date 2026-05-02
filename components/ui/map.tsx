@@ -1078,7 +1078,6 @@ type MapArcDatum = {
   to: [number, number];
 };
 
-
 type MapArcEvent<T extends MapArcDatum = MapArcDatum> = {
   arc: T;
   longitude: number;

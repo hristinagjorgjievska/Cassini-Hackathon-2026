@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const users = getMockUsers();
     const found = users.find((u: any) => u.email === email && u.pass === pass);
     if (!found) throw new Error("Invalid email or password");
-    
+
     const loggedInUser = { id: found.id, name: found.name, email: found.email, role: found.role };
     setUser(loggedInUser);
     localStorage.setItem("current_user_id", found.id);
@@ -63,11 +63,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (users.find((u: any) => u.email === email)) {
       throw new Error("User with this email already exists");
     }
-    
+
     const newUser = { id: `user-${Date.now()}`, name, email, pass, role };
     users.push(newUser);
     localStorage.setItem("mock_users", JSON.stringify(users));
-    
+
     const loggedInUser = { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role };
     setUser(loggedInUser);
     localStorage.setItem("current_user_id", newUser.id);
@@ -76,10 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateRole = async (newRole: string) => {
     if (!user) return;
-    
+
     const updatedUser = { ...user, role: newRole };
     setUser(updatedUser);
-    
+
     const users = getMockUsers();
     const userIndex = users.findIndex((u: any) => u.id === user.id);
     if (userIndex !== -1) {

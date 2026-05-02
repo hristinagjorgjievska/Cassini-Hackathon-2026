@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/AuthContext";
 
 export default function MyWaterPage() {
   const [waterSources, setWaterSources] = useState<WaterSource[]>([]);
-  
+
   const [label, setLabel] = useState("");
   const [longitude, setLongitude] = useState("");
   const [latitude, setLatitude] = useState("");
@@ -42,22 +42,22 @@ export default function MyWaterPage() {
     e.preventDefault();
     const lng = parseFloat(longitude);
     const lat = parseFloat(latitude);
-    
+
     if (isNaN(lng) || isNaN(lat)) {
       showAlert("Invalid Input", "Please enter valid numeric coordinates.", "error");
       return;
     }
-    
+
     if (editingSourceId) {
       updateCustomWaterSource(editingSourceId, label, lng, lat, selectedDisturbances);
     }
-    
+
     setLabel("");
     setLongitude("");
     setLatitude("");
     setSelectedDisturbances([]);
     setEditingSourceId(null);
-    
+
     loadData();
   };
 
@@ -232,7 +232,7 @@ export default function MyWaterPage() {
                       Water source is clear of disturbances.
                     </div>
                   )}
-                  
+
                   <div className="mt-5 flex gap-3 border-t border-slate-100 dark:border-slate-700/50 pt-4">
                     <Link 
                         href={`/water-source/${source.id}`}

@@ -277,7 +277,7 @@ export function updateCustomWaterSource(id: number, label: string, longitude: nu
 
     const stored = localStorage.getItem("custom_water_sources");
     const customSources: WaterSource[] = stored ? JSON.parse(stored) : [];
-    
+
     const index = customSources.findIndex(s => s.id === id);
     if (index !== -1) {
         customSources[index] = {
@@ -296,10 +296,10 @@ export function deleteCustomWaterSource(id: number) {
 
     const stored = localStorage.getItem("custom_water_sources");
     if (!stored) return;
-    
+
     const customSources: WaterSource[] = JSON.parse(stored);
     const filtered = customSources.filter(s => s.id !== id);
-    
+
     localStorage.setItem("custom_water_sources", JSON.stringify(filtered));
 }
 
@@ -328,8 +328,6 @@ export function getMockHistoricalData(id: number) {
     }
     return data;
 }
-
-
 
 export function mapSatelliteToDisturbances(data: SatelliteData): Disturbance[] {
     const result: Disturbance[] = [];
@@ -390,7 +388,7 @@ export function enrichWaterSourceWithSatellite(
     };
 
     localStorage.setItem("custom_water_sources", JSON.stringify(customSources));
-    
+
     const disturbanceNames = disturbances.map(d => disturbanceDescriptions[d.type] || d.type);
     sendAnalysisCompleteEmail("ognen.mlad@gmail.com", customSources[index].label, disturbanceNames, data.pollution_status);
 
