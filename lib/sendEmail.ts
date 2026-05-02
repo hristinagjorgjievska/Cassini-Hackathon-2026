@@ -1,8 +1,17 @@
 import emailjs from '@emailjs/browser';
 
-const EMAILJS_SERVICE_ID = "service_vjke9hq";
-const EMAILJS_TEMPLATE_ID = "template_bn7quxa";
-const EMAILJS_PUBLIC_KEY = "Iw7xZcQdMxv05Efuw";
+/**
+ * EMAILJS CONFIGURATION GUIDE:
+ * To use this emailing system, you need to set up an account at https://www.emailjs.com/
+ * 
+ * 1. EMAILJS_SERVICE_ID: Found in 'Email Services' tab after adding a service (e.g., Gmail, Outlook).
+ * 2. EMAILJS_TEMPLATE_ID: Found in 'Email Templates' tab after creating a template.
+ *    - Make sure your template uses these variables: {{to_email}}, {{location_name}}, {{pollution_status}}, {{disturbances_list}}
+ * 3. EMAILJS_PUBLIC_KEY: Found in 'Account' -> 'API Keys' section.
+ */
+const EMAILJS_SERVICE_ID = "YOUR_SERVICE_ID";
+const EMAILJS_TEMPLATE_ID = "YOUR_TEMPLATE_ID";
+const EMAILJS_PUBLIC_KEY = "YOUR_PUBLIC_KEY";
 
 export async function sendAnalysisCompleteEmail(
   userEmail: string,

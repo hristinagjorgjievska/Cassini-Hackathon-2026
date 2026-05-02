@@ -7,7 +7,7 @@
 
 ## 📺 Demo
 
-[![Watch the demo](https://img.shields.io/badge/YouTube-Watch%20Demo-red?logo=youtube)](https://www.youtube.com/watch?v=4fo1SQArMd4)
+[![Watch the demo](https://img.shields.io/badge/YouTube-Watch%20Demo-red?logo=youtube)](https://youtu.be/jx2_00zO7Ac)
 
 ---
 
