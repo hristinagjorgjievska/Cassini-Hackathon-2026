@@ -80,3 +80,5 @@ build/
 
 # ── Duplicate / scratch files ──────────────────────────────────
 README copy.md
+scratch/
+satelite_data_output/
