@@ -25,7 +25,6 @@ Users add custom water sources by latitude/longitude. The platform fetches live 
 - **Live Satellite Telemetry** — Fetches and computes key indices directly from Sentinel-2 imagery via the openEO Copernicus Data Space:
   - `NDWI` — Normalized Difference Water Index (water vs. land detection)
   - `NDCI` — Normalized Difference Chlorophyll Index (algae bloom detection)
-  - `Chlorophyll-a` — Estimation of chlorophyll concentration to track eutrophication
   - `Turbidity` — Water clarity measurement
   - `Suspended Sediment Load` — Physical disturbance indicator
 - **AI-Powered 5-Day Forecast** — Predicts future water quality by combining current satellite indices with daily rainfall forecasts. Each day is assigned a risk score, category, and status color.
@@ -81,6 +80,7 @@ cassini-water-monitor/
 | Python | Core processing language |
 | openEO SDK | Copernicus Sentinel-2 data pipeline |
 | Open-Meteo API | Rainfall forecast data |
+| ThreadPoolExecutor | Concurrent satellite job execution |
 
 ---
 
@@ -113,13 +113,6 @@ uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 **4. Verify it's running**
-
-*For Windows (PowerShell):*
-```powershell
-Invoke-RestMethod -Uri "http://localhost:8000/analyze-water" -Method Post -ContentType "application/json" -Body '{"lat": 41.0297, "lon": 20.7169}'
-```
-
-*For Linux/macOS:*
 ```bash
 curl -X POST http://localhost:8000/analyze-water \
   -H "Content-Type: application/json" \
@@ -152,7 +145,43 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
+## 📡 API Reference
 
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/analyze-water` | Analyze water quality at `{ lat, lon }` |
+| `GET` | `/health` | Health check + cache stats |
+| `GET` | `/docs` | Auto-generated Swagger UI |
+
+### Example Request
+```json
+POST /analyze-water
+{
+  "lat": 41.0297,
+  "lon": 20.7169
+}
+```
+
+### Example Response
+```json
+{
+  "location": { "lat": 41.0297, "lon": 20.7169 },
+  "ndwi": 0.4404,
+  "ndci": 0.0027,
+  "turbidity": -0.257,
+  "water_detected": true,
+  "pollution_status": "MEDIUM",
+  "rainfall_mm": 22.3,
+  "rainfall_impact": "HIGH",
+  "forecast": [ ... ],
+  "eu_alert": {
+    "triggered": false,
+    "message": "Water safe for irrigation."
+  }
+}
+```
+
+---
 
 ## 🟢 Pollution Classification
 
@@ -190,6 +219,7 @@ const data = await response.json();
 - Satellite data fetch takes **60–120 seconds** per unique location (openEO job execution time)
 - Results are **cached for 30 minutes** to avoid redundant processing
 - Cache key is rounded to ±0.01° (~1 km grid resolution)
+- Up to **10 concurrent** satellite requests via `ThreadPoolExecutor`
 
 > 💡 **Hackathon tip:** Pre-warm the cache by calling key locations on startup to ensure instant responses during demos.
 
